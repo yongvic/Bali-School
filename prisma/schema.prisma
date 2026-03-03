@@ -1,0 +1,346 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Auth.js models
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// User account with authentication
+model User {
+  id                String              @id @default(cuid())
+  email             String?             @unique
+  emailVerified     DateTime?
+  name              String?
+  password          String?             // bcrypt hashed (for credentials auth)
+  image             String?
+  role              UserRole            @default(STUDENT)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Auth.js relations
+  accounts          Account[]
+  sessions          Session[]
+  
+  // Relations
+  onboarding        Onboarding?
+  learningPlan      LearningPlan?
+  kikiPoints        KikiPoints?
+  airportMap        AirportMap?
+  exercises         Exercise[]
+  videos            Video[]
+  badges            Badge[]
+  wishes            Wish[]
+  adminFeedback     AdminFeedback[]
+  
+  @@index([email])
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+// Onboarding data captured during initial flow
+model Onboarding {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Profession info
+  professionGoal    String              // e.g., "future flight attendant"
+  englishLevel      String              // A1, A2, B1, B2, C1, C2
+  dailyMinutes      Int                 // minutes available per day
+  weeklyGoal        Int                 // hours per week
+  
+  // Airport preference
+  airportCode       String?             // IATA code e.g., "CGK" for Jakarta
+  airportName       String?
+  
+  // Motivation & challenges
+  challenges        String[]            // array of challenge areas
+  motivation        String              // why they want to learn English
+  
+  completedAt       DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([userId])
+}
+
+// Personalized 30/60/90 day learning plan
+model LearningPlan {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Plan metadata
+  generatedAt       DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  pdfUrl            String?             // URL to generated PDF
+  
+  // Week-by-week breakdown (stored as JSON for flexibility)
+  weeklyFocus       String[]            // Array of focus areas per week
+  estimatedCompletion DateTime          // projected completion date
+  
+  // Relations
+  modules           Module[]
+  
+  @@index([userId])
+}
+
+// Learning modules grouped by week
+model Module {
+  id                String              @id @default(cuid())
+  planId            String
+  learningPlan      LearningPlan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  
+  week              Int                 // week 1-12
+  title             String              // e.g., "Basic Greetings in Cabin Service"
+  description       String?
+  targetPoints      Int                 // Kiki Points target for this module
+  
+  exercises         Exercise[]
+  createdAt         DateTime            @default(now())
+  
+  @@index([planId])
+  @@index([week])
+}
+
+// Exercises with different modes
+model Exercise {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  moduleId          String
+  module            Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  mode              ExerciseMode        // Passenger, Accent Training, etc.
+  title             String
+  description       String?
+  content           String              // exercise prompt/scenario
+  pointsValue       Int                 // points earned on completion
+  
+  videoSubmissions  Video[]
+  completed         Boolean             @default(false)
+  completedAt       DateTime?
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([userId])
+  @@index([moduleId])
+}
+
+enum ExerciseMode {
+  PASSENGER          // Simulate passenger requests
+  ACCENT_TRAINING    // Pronunciation focus
+  SECRET_CHALLENGE   // Random scenario
+  WHEEL_OF_ENGLISH   // Spin wheel for topic
+  ROLE_PLAY          // Pre-written dialogue
+  LISTENING          // Audio comprehension
+  EMERGENCY          // Safety phrase practice
+  CUSTOM             // User-uploaded scenario
+}
+
+// Video submissions for exercises
+model Video {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  exerciseId        String
+  exercise          Exercise            @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  
+  // Storage
+  blobUrl           String              // Vercel Blob URL
+  duration          Int?                // duration in seconds
+  
+  // Validation
+  status            VideoStatus         @default(PENDING)
+  submittedAt       DateTime            @default(now())
+  validatedAt       DateTime?
+  
+  adminFeedback     AdminFeedback?
+  
+  @@index([userId])
+  @@index([exerciseId])
+  @@index([status])
+}
+
+enum VideoStatus {
+  PENDING            // Awaiting admin review
+  APPROVED           // Passed validation
+  REJECTED           // Failed validation
+  REVISION_NEEDED    // Needs revision based on feedback
+}
+
+// Admin feedback on videos with advanced system
+model AdminFeedback {
+  id                String              @id @default(cuid())
+  adminId           String
+  admin             User                @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  videoId           String              @unique
+  video             Video               @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  // Feedback
+  decision          VideoStatus         // APPROVED or REJECTED or REVISION_NEEDED
+  textFeedback      String?             // Written feedback
+  audioFeedbackUrl  String?             // Vercel Blob URL for audio feedback
+  
+  grade             Int?                // 0-100 score
+  strengths         String[]            // Positive points
+  improvements      String[]            // Areas to improve
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([adminId])
+  @@index([videoId])
+}
+
+// Gamification: Points and Achievements
+model Badge {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  badgeType         BadgeType
+  unlockedAt        DateTime            @default(now())
+  
+  @@unique([userId, badgeType])
+  @@index([userId])
+}
+
+enum BadgeType {
+  FIRST_EXERCISE      // Complete first exercise (instant)
+  PRONUNCIATION_STAR  // 5 pronunciation exercises (5 x 60 = 300 points)
+  CABIN_MASTER        // 10 cabin service scenarios
+  SAFETY_GURU         // 5 emergency phrases
+  CONSISTENCY_KING    // 20 days in a row
+  GRAMMAR_CHAMPION    // 3 grammar exercises
+  LISTENING_LEGEND    // 3 listening exercises
+  WHEEL_WINNER        // 5 wheel of English spins
+}
+
+// Gamification: Kiki Points system
+model KikiPoints {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  totalPoints       Int                 @default(0)
+  weeklyPoints      Int                 @default(0)    // reset each week
+  monthlyPoints     Int                 @default(0)    // reset each month
+  weekStartDate     DateTime?           // start of current week
+  monthStartDate    DateTime?           // start of current month
+  monthlyObjective  Int                 @default(300)  // 300 points/week target
+  
+  lastEarned        DateTime?
+  updatedAt         DateTime            @updatedAt
+  
+  pointsHistory     PointsHistory[]
+  
+  @@index([userId])
+}
+
+// Points History for analytics
+model PointsHistory {
+  id                String              @id @default(cuid())
+  kikiPointsId      String
+  kikiPoints        KikiPoints          @relation(fields: [kikiPointsId], references: [id], onDelete: Cascade)
+  
+  points            Int
+  reason            String              // "exercise_complete", "video_approved", "bonus"
+  createdAt         DateTime            @default(now())
+  
+  @@index([kikiPointsId])
+  @@index([createdAt])
+}
+
+// Wish list: Making wishes for content/features
+model Wish {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title             String
+  description       String?
+  category          String              // Exercise mode, scenario, vocabulary topic
+  votes             Int                 @default(0)     // social proof
+  
+  status            WishStatus          @default(PENDING)
+  createdAt         DateTime            @default(now())
+  
+  @@index([userId])
+  @@index([status])
+}
+
+enum WishStatus {
+  PENDING            // Waiting for admin review
+  APPROVED           // Added to roadmap
+  REJECTED           // Not in scope
+  COMPLETED          // Feature built
+}
+
+// Airport map for progression visualization
+model AirportMap {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Progression through airport map (0-100%)
+  progressPercentage Int               @default(0)
+  currentTerminal    Int                @default(1)  // 1-5 terminals
+  completedAreas     String[]           @default([])  // Area slugs
+  
+  lastProgressAt     DateTime           @default(now())
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  
+  @@index([userId])
+}
