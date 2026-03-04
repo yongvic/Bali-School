@@ -127,7 +127,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted p-4">
+    <div className="page-shell p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <div className="flex gap-2 mb-4">
@@ -145,7 +145,7 @@ export default function OnboardingPage() {
 
         <Card className="border border-border bg-card">
           <CardHeader>
-            <CardTitle>{steps[currentStep].title}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{steps[currentStep].title}</CardTitle>
             <CardDescription>{steps[currentStep].description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -269,7 +269,7 @@ export default function OnboardingPage() {
             {currentStep === 4 && (
               <div className="space-y-4">
                 <Label>Avez-vous l’habitude de parler devant une caméra ?</Label>
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   {['Oui', 'Non'].map((option) => (
                     <Button
                       key={option}
@@ -287,14 +287,14 @@ export default function OnboardingPage() {
             {currentStep === 5 && (
               <div className="space-y-4">
                 <Label>Quelle est votre plus grande difficulté en anglais ?</Label>
-                <textarea
-                  id="difficulty"
-                  placeholder="Exemple: parler naturellement avec les passagers ou gérer les procédures de sécurité..."
-                  value={formData.biggestDifficulty}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, biggestDifficulty: e.target.value }))}
-                  className="w-full p-2 border border-border rounded-md"
-                  rows={3}
-                />
+                  <textarea
+                    id="difficulty"
+                    placeholder="Exemple: parler naturellement avec les passagers ou gérer les procédures de sécurité..."
+                    value={formData.biggestDifficulty}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, biggestDifficulty: e.target.value }))}
+                    className="w-full p-2 border border-border rounded-md bg-background resize-y"
+                    rows={3}
+                  />
               </div>
             )}
 
@@ -345,29 +345,30 @@ export default function OnboardingPage() {
                     placeholder="Expliquez ce qui vous motive à apprendre l'anglais..."
                     value={formData.motivation}
                     onChange={(e) => setFormData((prev) => ({ ...prev, motivation: e.target.value }))}
-                    className="w-full p-2 border border-border rounded-md"
+                    className="w-full p-2 border border-border rounded-md bg-background resize-y"
                     rows={3}
                   />
                 </div>
               </div>
             )}
 
-            <div className="flex gap-3 pt-6">
+            <div className="flex flex-col-reverse sm:flex-row gap-3 pt-6">
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
                 disabled={currentStep === 0}
+                className="w-full sm:w-auto"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Précédent
               </Button>
               {currentStep < steps.length - 1 ? (
-                <Button onClick={() => setCurrentStep((prev) => prev + 1)} disabled={!canProceed()} className="flex-1">
+                <Button onClick={() => setCurrentStep((prev) => prev + 1)} disabled={!canProceed()} className="w-full sm:flex-1">
                   Suivant
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={!canProceed() || isLoading} className="flex-1">
+                <Button onClick={handleSubmit} disabled={!canProceed() || isLoading} className="w-full sm:flex-1">
                   {isLoading ? 'Création du plan...' : 'Terminer et générer le plan'}
                 </Button>
               )}

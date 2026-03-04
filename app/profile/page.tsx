@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { toast } from 'sonner';
-import { User } from 'lucide-react';
+import { ImageUp, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -47,6 +50,19 @@ export default function ProfilePage() {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const onAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setSelectedAvatar(file);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(file ? URL.createObjectURL(file) : null);
+  };
+
   const onSave = async () => {
     setSaving(true);
     try {
@@ -67,7 +83,8 @@ export default function ProfilePage() {
     }
   };
 
-  const onUploadAvatar = async (file: File | null) => {
+  const onUploadAvatar = async () => {
+    const file = selectedAvatar;
     if (!file) return;
     setUploading(true);
     try {
@@ -84,6 +101,12 @@ export default function ProfilePage() {
       const payload = (await response.json()) as { image: string };
       setProfile((prev) => (prev ? { ...prev, image: payload.image } : prev));
       await update({ image: payload.image });
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      setSelectedAvatar(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       toast.success('Photo de profil mise à jour');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Echec upload');
@@ -105,32 +128,37 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
-      <div className="max-w-3xl mx-auto px-4">
+    <div className="page-shell py-8">
+      <div className="page-container-sm">
         <Card className="rounded-3xl">
           <CardHeader>
             <CardTitle>Mon profil</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16 border">
-                <AvatarImage src={profile.image || undefined} alt={profile.name || 'Avatar'} />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <Avatar className="h-16 w-16 border shrink-0">
+                <AvatarImage src={previewUrl || profile.image || undefined} alt={profile.name || 'Avatar'} />
                 <AvatarFallback>
                   {profile.name?.slice(0, 1).toUpperCase() || <User className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>
-              <div className="space-y-2">
-                <input
-                  id="avatarUpload"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="text-sm"
-                  onChange={(event) => onUploadAvatar(event.target.files?.[0] || null)}
-                />
+              <div className="space-y-2 min-w-0">
+                <input ref={fileInputRef} id="avatarUpload" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onAvatarChange} />
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    <ImageUp className="mr-2 h-4 w-4" />
+                    Choisir une photo
+                  </Button>
+                  <Button type="button" onClick={onUploadAvatar} disabled={uploading || !selectedAvatar}>
+                    {uploading ? 'Upload en cours...' : 'Valider la photo'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">
+                  {selectedAvatar ? `Fichier sélectionné: ${selectedAvatar.name}` : 'Aucun fichier sélectionné'}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   JPG, PNG ou WEBP (max 3MB). Une icone s&apos;affiche par defaut sans photo.
                 </p>
-                <p className="text-xs text-primary">{uploading ? 'Upload en cours...' : 'Choisissez un fichier pour mettre a jour la photo.'}</p>
               </div>
             </div>
 

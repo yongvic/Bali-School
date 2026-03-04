@@ -50,9 +50,9 @@ export function Navigation() {
           <Image
             src="/logo.svg"
             alt="Ravi's"
-            width={112}
-            height={28}
-            className="h-5 w-auto max-w-[98px] sm:h-6 sm:max-w-[108px]"
+            width={102}
+            height={26}
+            className="h-[18px] w-auto max-w-[90px] sm:h-5 sm:max-w-[100px] md:h-6 md:max-w-[110px]"
             priority
           />
         </Link>
@@ -109,7 +109,7 @@ export function Navigation() {
       {/* Mobile Navigation */}
       {isOpen && (
         <div className="md:hidden border-t border-border">
-          <div className="px-3 py-3 space-y-2">
+          <div className="px-3 py-3 space-y-2 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center gap-2 px-2 pb-1">
               <Avatar className="h-7 w-7 border">
                 <AvatarImage src={session.user.image || undefined} alt={session.user.name || 'Profil'} />

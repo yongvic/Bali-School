@@ -63,16 +63,16 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="page-shell">
       <div className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <Button variant="outline" onClick={() => window.history.back()} className="mb-4">Retour</Button>
-          <h1 className="text-3xl font-bold">Votre progression</h1>
-          <p className="text-muted-foreground mt-1">Suivez votre évolution semaine après semaine</p>
+        <div className="page-container py-5 sm:py-6">
+          <Button variant="outline" onClick={() => window.history.back()} className="mb-4 btn-mobile-full">Retour</Button>
+          <h1 className="page-title">Votre progression</h1>
+          <p className="page-subtitle">Suivez votre évolution semaine après semaine</p>
         </div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <main className="page-container py-8 section-stack">
         {progress && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -125,7 +125,7 @@ export default function ProgressPage() {
                 <CardTitle>Objectif hebdomadaire</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
                   <span>{progress.weeklyPoints}/{progress.weeklyObjective} points</span>
                   <span className={progress.weeklyObjectiveReached ? 'text-green-600' : 'text-amber-600'}>
                     {progress.weeklyObjectiveReached ? 'Atteint' : 'Non atteint'}
@@ -143,7 +143,7 @@ export default function ProgressPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2">
                     <span className="text-sm font-semibold">Achèvement du parcours</span>
                     <span className="text-sm text-muted-foreground">{progress.completionPercentage}%</span>
                   </div>

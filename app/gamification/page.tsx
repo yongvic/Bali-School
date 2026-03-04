@@ -77,11 +77,11 @@ export default function GamificationPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Vos récompenses</h1>
-          <p className="text-lg text-muted-foreground">Suivez vos points Kiki et badges débloqués</p>
+    <div className="page-shell py-8">
+      <div className="page-container">
+        <div className="text-center mb-10 sm:mb-12">
+          <h1 className="page-title mb-4 sm:text-4xl">Vos récompenses</h1>
+          <p className="page-subtitle sm:text-lg">Suivez vos points Kiki et badges débloqués</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -135,7 +135,7 @@ export default function GamificationPage() {
                 return (
                   <div
                     key={badge.code}
-                    className={`p-6 rounded-lg border-2 text-center ${
+                    className={`p-4 sm:p-6 rounded-lg border-2 text-center ${
                       badge.unlocked
                         ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20'
                         : 'border-gray-200 dark:border-gray-700 opacity-50'
@@ -156,10 +156,10 @@ export default function GamificationPage() {
             <CardTitle>Comment gagner des points</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between items-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20"><span>Terminer un exercice</span><span className="font-bold text-blue-600">+50-75 pts</span></div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20"><span>Soumettre une vidéo</span><span className="font-bold text-indigo-600">+20 pts</span></div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20"><span>Débloquer un badge</span><span className="font-bold text-yellow-600">+100 pts</span></div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20"><span>Bonus de régularité</span><span className="font-bold text-green-600">+10 pts/jour</span></div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20"><span>Terminer un exercice</span><span className="font-bold text-blue-600">+50-75 pts</span></div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20"><span>Soumettre une vidéo</span><span className="font-bold text-indigo-600">+20 pts</span></div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20"><span>Débloquer un badge</span><span className="font-bold text-yellow-600">+100 pts</span></div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20"><span>Bonus de régularité</span><span className="font-bold text-green-600">+10 pts/jour</span></div>
           </CardContent>
         </Card>
       </div>

@@ -292,23 +292,23 @@ export default function LearnModePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="page-shell">
       <div className="border-b border-border/40 sticky top-0 z-50 bg-background/95 backdrop-blur">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" size="sm" asChild>
+        <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="ghost" size="sm" asChild className="w-full sm:w-auto justify-start">
             <Link href="/learn" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
               Retour
             </Link>
           </Button>
-          <h1 className="text-xl font-bold">{exercise.title}</h1>
-          <div className="w-20 text-right text-sm text-muted-foreground">
+          <h1 className="text-lg sm:text-xl font-bold text-center sm:text-left break-words">{exercise.title}</h1>
+          <div className="w-full sm:w-20 text-left sm:text-right text-sm text-muted-foreground">
             {currentScenarioIndex + 1}/{totalScenarios}
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="page-container-md py-8">
         <div className="mb-8">
           <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
@@ -320,18 +320,18 @@ export default function LearnModePage() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-2xl">{exercise.title}</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{exercise.title}</CardTitle>
             <p className="text-sm text-muted-foreground">{exercise.description}</p>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="bg-muted p-6 rounded-lg space-y-4">
               <p className="text-lg font-semibold">Prompt (EN):</p>
-              <p className="text-xl">{scenario.prompt}</p>
+              <p className="text-base sm:text-lg break-words">{scenario.prompt}</p>
               {scenario.pronunciationWord && (
                 <div>
                   <p className="text-lg font-semibold mt-4 mb-2">Word:</p>
-                  <div className="text-4xl font-bold text-primary mb-4">{scenario.pronunciationWord}</div>
-                  <Button variant="outline" size="lg" className="gap-2">
+                  <div className="text-3xl sm:text-4xl font-bold text-primary mb-4 break-words">{scenario.pronunciationWord}</div>
+                  <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto">
                     <Volume2 className="w-5 h-5" />
                     Écouter la prononciation
                   </Button>
@@ -342,7 +342,7 @@ export default function LearnModePage() {
             <div className="space-y-4">
               <p className="font-semibold">Votre réponse (à l&apos;oral)</p>
               <div
-                className={`p-8 rounded-lg border-2 flex items-center justify-center ${
+                className={`p-4 sm:p-8 rounded-lg border-2 flex items-center justify-center ${
                   isRecording
                     ? 'border-red-500 bg-red-50 dark:bg-red-950'
                     : 'border-dashed border-muted-foreground/30 bg-muted'
@@ -358,12 +358,12 @@ export default function LearnModePage() {
                 )}
               </div>
 
-              <div className="flex gap-3">
-                <Button onClick={isRecording ? stopRecording : startRecording} variant={isRecording ? 'destructive' : 'outline'} size="lg" className="flex-1">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button onClick={isRecording ? stopRecording : startRecording} variant={isRecording ? 'destructive' : 'outline'} size="lg" className="w-full sm:flex-1">
                   <Mic className="w-4 h-4 mr-2" />
                   {isRecording ? "Arrêter l'enregistrement" : "Démarrer l'enregistrement"}
                 </Button>
-                <Button onClick={handleSubmit} disabled={oralScore === null || isSubmitting} size="lg" className="flex-1">
+                <Button onClick={handleSubmit} disabled={oralScore === null || isSubmitting} size="lg" className="w-full sm:flex-1">
                   {isSubmitting ? 'Soumission...' : `Valider (+${scenario.points} pts)`}
                 </Button>
               </div>
@@ -382,9 +382,9 @@ export default function LearnModePage() {
 
               <div className="space-y-2">
                 <p className="text-sm font-semibold">Phrase attendue</p>
-                <p className="text-sm text-muted-foreground">{expectedPhrase}</p>
+                <p className="text-sm text-muted-foreground break-words">{expectedPhrase}</p>
                 <p className="text-sm font-semibold">Transcription détectée</p>
-                <p className="text-sm text-muted-foreground">{transcript || 'Aucune transcription pour le moment.'}</p>
+                <p className="text-sm text-muted-foreground break-words">{transcript || 'Aucune transcription pour le moment.'}</p>
                 {oralScore !== null && (
                   <div className="p-3 rounded-lg bg-primary/10 text-sm">
                     <p className="font-semibold">Score oral: {oralScore}/100</p>

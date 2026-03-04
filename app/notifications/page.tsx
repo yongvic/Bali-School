@@ -41,11 +41,11 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="page-shell p-4 sm:p-6">
+      <div className="page-container-md stack-compact">
         <div className="flex items-center gap-2">
           <Bell className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold">Notifications</h1>
+          <h1 className="page-title">Notifications</h1>
         </div>
 
         <Card>
@@ -57,13 +57,13 @@ export default function NotificationsPage() {
               <p className="text-sm text-muted-foreground">Aucune notification pour le moment.</p>
             ) : (
               items.map((item) => (
-                <div key={item.id} className="p-3 rounded-lg border border-border flex items-start gap-3">
+                <div key={item.id} className="p-3 rounded-lg border border-border flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
                   {iconFor(item.type)}
                   <div className="flex-1">
                     <p className="font-semibold text-sm">{item.title}</p>
                     <p className="text-sm text-muted-foreground">{item.message}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{new Date(item.date).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground shrink-0">{new Date(item.date).toLocaleString()}</p>
                 </div>
               ))
             )}

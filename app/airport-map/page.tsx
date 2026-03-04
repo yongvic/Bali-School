@@ -43,11 +43,11 @@ export default function AirportMapPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="page-shell p-4 sm:p-6">
+      <div className="page-container-md stack-compact">
         <div className="flex items-center gap-2">
           <Plane className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl sm:text-3xl font-bold">Carte aéroport</h1>
+          <h1 className="page-title">Carte aéroport</h1>
         </div>
 
         <Card>
@@ -68,7 +68,7 @@ export default function AirportMapPage() {
             <CardTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4" />Carte de progression interactive</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative w-full h-[360px] sm:h-[320px] rounded-xl border bg-gradient-to-br from-sky-100 via-cyan-50 to-emerald-100 overflow-hidden">
+            <div className="relative w-full h-[390px] sm:h-[320px] rounded-xl border bg-gradient-to-br from-sky-100 via-cyan-50 to-emerald-100 overflow-hidden">
               <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'radial-gradient(#9ca3af 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
               <svg className="absolute inset-0 w-full h-full">
                 <path d="M 40 230 C 140 80, 260 240, 360 110 S 560 210, 680 140" stroke="#38bdf8" strokeWidth="8" fill="none" strokeDasharray="12 10" />
@@ -82,7 +82,7 @@ export default function AirportMapPage() {
                   <button
                     key={zone.id}
                     type="button"
-                    className={`absolute -translate-x-1/2 -translate-y-1/2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs shadow-sm max-w-[100px] sm:max-w-none ${
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs shadow-sm max-w-[86px] sm:max-w-none ${
                       unlocked ? 'bg-white/90 border-emerald-300' : 'bg-white/70 border-slate-300'
                     }`}
                     style={{ left: zone.left, top: zone.top }}
@@ -90,7 +90,7 @@ export default function AirportMapPage() {
                   >
                     <div className="flex items-center gap-2">
                       {unlocked ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Lock className="w-3.5 h-3.5 text-slate-500" />}
-                      <span className={active ? 'font-semibold text-primary' : 'text-slate-700'}>{zone.name}</span>
+                      <span className={`truncate ${active ? 'font-semibold text-primary' : 'text-slate-700'}`}>{zone.name}</span>
                     </div>
                     {active && (
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-2 py-1 rounded-md whitespace-nowrap">

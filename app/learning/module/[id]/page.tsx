@@ -299,8 +299,8 @@ export default function ModulePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
-      <div className="mx-auto max-w-6xl px-4 space-y-8">
+    <div className="page-shell py-8">
+      <div className="page-container section-stack">
         <section className="space-y-5">
           <Button variant="outline" onClick={() => window.history.back()} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Retour au plan
@@ -308,9 +308,9 @@ export default function ModulePage() {
 
           <Card className="rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
             <CardHeader className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-3xl">{displayTitle}</CardTitle>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <CardTitle className="text-2xl sm:text-3xl break-words">{displayTitle}</CardTitle>
                   <p className="text-muted-foreground mt-1">{module.title}</p>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
@@ -350,7 +350,7 @@ export default function ModulePage() {
         </section>
 
         <section className="space-y-3">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
             <p className="font-semibold">Parcours pedagogique guide</p>
             <p className="text-muted-foreground">Etape {activePhase + 1} / {phaseLabels.length}</p>
           </div>
@@ -387,9 +387,9 @@ export default function ModulePage() {
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="font-semibold">Dialogue d'observation</p>
-                  <Button size="sm" variant="outline" onClick={() => speak(blueprint?.listening.dialogue || '')} className="gap-2">
+                  <Button size="sm" variant="outline" onClick={() => speak(blueprint?.listening.dialogue || '')} className="gap-2 w-full sm:w-auto">
                     <Volume2 className="h-4 w-4" /> Ecouter l'audio
                   </Button>
                 </div>
@@ -429,9 +429,9 @@ export default function ModulePage() {
 
               {selectedWord && (
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-lg font-semibold">{selectedWord.word}</p>
-                    <Button size="sm" variant="outline" className="gap-2" onClick={() => speak(selectedWord.audioText)}>
+                    <Button size="sm" variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => speak(selectedWord.audioText)}>
                       <AudioLines className="h-4 w-4" /> Audio
                     </Button>
                   </div>
@@ -494,12 +494,12 @@ export default function ModulePage() {
                   <p className="text-sm text-slate-700"><strong>Feedback pedagogique attendu:</strong> {currentPractice.step.feedback}</p>
 
                   {currentPractice.exercise ? (
-                    <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-3">
-                      <div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-primary/20 bg-primary/5 p-3">
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold">Activite reliee: {currentPractice.exercise.title}</p>
-                        <p className="text-xs text-muted-foreground">{currentPractice.exercise.description}</p>
+                        <p className="text-xs text-muted-foreground break-words">{currentPractice.exercise.description}</p>
                       </div>
-                      <Button asChild size="sm">
+                      <Button asChild size="sm" className="w-full sm:w-auto">
                         <Link href={`/learning/exercise/${currentPractice.exercise.id}`}>Commencer</Link>
                       </Button>
                     </div>
@@ -511,17 +511,19 @@ export default function ModulePage() {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
                   variant="outline"
                   onClick={() => setPracticeIndex((prev) => Math.max(0, prev - 1))}
                   disabled={practiceIndex === 0}
+                  className="w-full sm:w-auto"
                 >
                   Etape precedente
                 </Button>
                 <Button
                   onClick={() => setPracticeIndex((prev) => Math.min(practiceExercises.length - 1, prev + 1))}
                   disabled={practiceIndex >= practiceExercises.length - 1}
+                  className="w-full sm:w-auto"
                 >
                   Etape suivante
                 </Button>
@@ -548,12 +550,12 @@ export default function ModulePage() {
               </div>
 
               {oralExercise ? (
-                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="min-w-0">
                     <p className="font-semibold">Exercice oral final: {oralExercise.title}</p>
-                    <p className="text-xs text-muted-foreground">{oralExercise.description}</p>
+                    <p className="text-xs text-muted-foreground break-words">{oralExercise.description}</p>
                   </div>
-                  <Button asChild>
+                  <Button asChild className="w-full sm:w-auto">
                     <Link href={`/learning/exercise/${oralExercise.id}`}>Activer le micro</Link>
                   </Button>
                 </div>
@@ -595,12 +597,12 @@ export default function ModulePage() {
               {finalExercises.length > 0 && (
                 <div className="space-y-2">
                   {finalExercises.slice(0, 3).map((exercise, index) => (
-                    <div key={exercise.id} className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-3">
-                      <div>
+                    <div key={exercise.id} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-primary/20 bg-primary/5 p-3">
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold">Question {index + 1}: {exercise.title}</p>
-                        <p className="text-xs text-muted-foreground">{exercise.description}</p>
+                        <p className="text-xs text-muted-foreground break-words">{exercise.description}</p>
                       </div>
-                      <Button size="sm" variant="outline" asChild>
+                      <Button size="sm" variant="outline" asChild className="w-full sm:w-auto">
                         <Link href={`/learning/exercise/${exercise.id}`}>Repondre</Link>
                       </Button>
                     </div>
@@ -618,11 +620,11 @@ export default function ModulePage() {
           </Card>
         )}
 
-        <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => setActivePhase((prev) => Math.max(0, prev - 1))} disabled={activePhase === 0}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="outline" onClick={() => setActivePhase((prev) => Math.max(0, prev - 1))} disabled={activePhase === 0} className="w-full sm:w-auto">
             Phase precedente
           </Button>
-          <Button onClick={() => setActivePhase((prev) => Math.min(phaseLabels.length - 1, prev + 1))} disabled={activePhase === phaseLabels.length - 1} className="gap-2">
+          <Button onClick={() => setActivePhase((prev) => Math.min(phaseLabels.length - 1, prev + 1))} disabled={activePhase === phaseLabels.length - 1} className="gap-2 w-full sm:w-auto">
             Etape suivante <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

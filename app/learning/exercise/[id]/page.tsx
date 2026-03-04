@@ -218,23 +218,23 @@ export default function ExercisePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-8">
-          <Button variant="outline" onClick={() => window.history.back()} className="mb-4">
+    <div className="page-shell py-8">
+      <div className="page-container-md">
+        <div className="page-header">
+          <Button variant="outline" onClick={() => window.history.back()} className="mb-4 btn-mobile-full">
             Retour
           </Button>
-          <h1 className="text-4xl font-bold mb-2">{exercise.title}</h1>
-          <p className="text-lg text-muted-foreground">
+          <h1 className="page-title mb-2 break-words sm:text-4xl">{exercise.title}</h1>
+          <p className="page-subtitle break-words sm:text-lg">
             Compétence: {exercise.skill} - Type: {exercise.exerciseType}
           </p>
         </div>
 
         <Tabs defaultValue="instructions" className="space-y-6">
-          <TabsList className={`grid w-full ${isOralExercise ? 'grid-cols-3' : 'grid-cols-2'}`}>
-            <TabsTrigger value="instructions">Consignes</TabsTrigger>
-            <TabsTrigger value="scenario">Scénario</TabsTrigger>
-            {isOralExercise && <TabsTrigger value="record">Enregistrer</TabsTrigger>}
+          <TabsList className={`grid h-auto w-full ${isOralExercise ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsTrigger value="instructions" className="text-xs sm:text-sm px-2">Consignes</TabsTrigger>
+            <TabsTrigger value="scenario" className="text-xs sm:text-sm px-2">Scénario</TabsTrigger>
+            {isOralExercise && <TabsTrigger value="record" className="text-xs sm:text-sm px-2">Enregistrer</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="instructions" className="space-y-4">
@@ -245,7 +245,7 @@ export default function ExercisePage() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   {modeGuide.instructions.map((instruction, idx) => (
-                    <div key={idx} className="flex gap-4">
+                    <div key={idx} className="flex gap-3 sm:gap-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                         {idx + 1}
                       </div>
@@ -270,7 +270,7 @@ export default function ExercisePage() {
               </CardHeader>
               <CardContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <p className="text-base leading-relaxed whitespace-pre-wrap">
+                  <p className="text-base leading-relaxed whitespace-pre-wrap break-words">
                     {interactiveExercise?.prompt || structured?.listening?.dialogue || exercise.content}
                   </p>
                 </div>
@@ -286,9 +286,9 @@ export default function ExercisePage() {
                     <p className="text-sm font-semibold">Exercice interactif</p>
                     {interactiveExercise ? (
                       <div className="space-y-3">
-                        <p className="text-sm">{interactiveExercise.prompt}</p>
+                        <p className="text-sm break-words">{interactiveExercise.prompt}</p>
                         {interactiveExercise.options && (
-                          <p className="text-xs text-muted-foreground">Options: {interactiveExercise.options.join(' | ')}</p>
+                          <p className="text-xs text-muted-foreground break-words">Options: {interactiveExercise.options.join(' | ')}</p>
                         )}
                         <input
                           className="w-full border rounded-md p-2 text-sm"
@@ -296,7 +296,7 @@ export default function ExercisePage() {
                           onChange={(event) => setAnswer(event.target.value)}
                           placeholder="Votre réponse"
                         />
-                        <Button onClick={validateInteractive} disabled={submitting || !answer.trim()}>
+                        <Button onClick={validateInteractive} disabled={submitting || !answer.trim()} className="w-full sm:w-auto">
                           {submitting ? 'Validation...' : `Valider (+${exercise.pointsValue} pts)`}
                         </Button>
                         {correction && <p className="text-sm text-muted-foreground">{correction}</p>}

@@ -52,15 +52,15 @@ export default function LearnPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="page-shell">
       <div className="border-b border-border/40">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">Centre d&apos;apprentissage</h1>
-          <p className="text-muted-foreground mt-2">Choisissez un mode et commencez à gagner des points Kiki</p>
+        <div className="page-container py-6 sm:py-8">
+          <h1 className="page-title">Centre d&apos;apprentissage</h1>
+          <p className="page-subtitle mt-2">Choisissez un mode et commencez à gagner des points Kiki</p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="page-container py-8">
         {modules?.weeklyFocus && (
           <Card className="mb-8 bg-primary/5 border-primary/20">
             <CardHeader>
@@ -86,12 +86,12 @@ export default function LearnPage() {
               <Card key={mode.id} className="hover:shadow-lg transition-shadow flex flex-col">
                 <CardHeader>
                   <Icon className="w-8 h-8 mb-2 text-primary" />
-                  <CardTitle>{mode.name}</CardTitle>
+                  <CardTitle className="leading-tight break-words">{mode.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-between">
-                  <p className="text-sm text-muted-foreground mb-4">{mode.description}</p>
+                  <p className="text-sm text-muted-foreground mb-4 break-words">{mode.description}</p>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <span className="text-muted-foreground">Points par exercice :</span>
                       <span className="font-bold text-primary">{mode.pointsPerExercise} pts</span>
                     </div>

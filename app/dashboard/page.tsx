@@ -125,7 +125,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="page-shell">
       <div className="border-b border-border bg-background sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-3 md:px-4 py-3 md:py-4 flex flex-wrap items-center justify-between gap-2 md:gap-3">
           <div className="flex items-center gap-3">
@@ -157,8 +157,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="space-y-8">
+      <div className="page-container py-8 sm:py-12">
+        <div className="section-stack">
           <div className="flex gap-4 flex-wrap">
             <div className="px-4 py-2 rounded-full bg-primary/10 text-primary font-semibold text-sm inline-flex items-center gap-2">
               {session.user.role === 'ADMIN' ? (
@@ -216,8 +216,8 @@ export default function DashboardPage() {
           )}
 
           <div>
-            <h2 className="text-4xl font-bold mb-4">Tableau de bord d&apos;apprentissage</h2>
-            <p className="text-lg text-muted-foreground">
+            <h2 className="page-title mb-4 sm:text-4xl">Tableau de bord d&apos;apprentissage</h2>
+            <p className="page-subtitle sm:text-lg">
               Retrouvez toutes vos fonctionnalités de progression et de pratique de l&apos;anglais professionnel.
             </p>
           </div>
@@ -255,11 +255,11 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">
                   Compétence prioritaire : {learningPlan.skillFocuses?.[0] || 'Communication professionnelle'}
                 </p>
-                <div className="flex gap-3">
-                  <Button variant="outline" size="sm" onClick={() => router.push('/learning-plan')}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => router.push('/learning-plan')}>
                     Voir le plan
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => router.push('/learning-plan')}>
+                  <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => router.push('/learning-plan')}>
                     Télécharger le plan
                   </Button>
                 </div>
@@ -279,7 +279,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">
                   Finalisez votre onboarding pour obtenir un plan personnalisé.
                 </p>
-                <Button className="gap-2" onClick={() => router.push('/onboarding')}>
+                <Button className="gap-2 w-full sm:w-auto" onClick={() => router.push('/onboarding')}>
                   Commencer l&apos;onboarding
                   <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -299,7 +299,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">
                   Accédez aux outils de revue des vidéos et de suivi des élèves.
                 </p>
-                <Button variant="outline" className="gap-2" onClick={() => router.push('/admin')}>
+                <Button variant="outline" className="gap-2 w-full sm:w-auto" onClick={() => router.push('/admin')}>
                   Aller au tableau admin
                   <ArrowRight className="w-4 h-4" />
                 </Button>

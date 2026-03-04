@@ -6,17 +6,17 @@ import { Button } from '@/components/ui/button';
 
 export default function SupportPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="page-shell">
       <div className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">Aide & support</h1>
-          <p className="text-muted-foreground mt-1">Retrouvez les réponses aux questions fréquentes</p>
+        <div className="page-container-md py-6">
+          <h1 className="page-title">Aide & support</h1>
+          <p className="page-subtitle">Retrouvez les réponses aux questions fréquentes</p>
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+      <main className="page-container-md py-8 section-stack">
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Questions fréquentes</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">Questions fréquentes</h2>
 
           {[
             {
@@ -52,13 +52,13 @@ export default function SupportPage() {
           ].map((faq, idx) => (
             <Card key={idx}>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
+                <CardTitle className="text-base flex items-start gap-2">
                   <HelpCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                  {faq.question}
+                  <span className="break-words">{faq.question}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                <p className="text-sm text-muted-foreground break-words">{faq.answer}</p>
               </CardContent>
             </Card>
           ))}
@@ -73,7 +73,7 @@ export default function SupportPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">Si vous ne trouvez pas votre réponse, contactez notre équipe support.</p>
-            <Button className="gap-2">
+            <Button className="gap-2 w-full sm:w-auto">
               <Mail className="w-4 h-4" />
               Contacter le support
             </Button>
@@ -81,7 +81,7 @@ export default function SupportPage() {
         </Card>
 
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Bonnes pratiques</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">Bonnes pratiques</h2>
 
           <Card>
             <CardHeader>

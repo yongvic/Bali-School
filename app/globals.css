@@ -133,6 +133,27 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+  }
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  li,
+  td,
+  th {
+    overflow-wrap: anywhere;
   }
   ::placeholder {
     color: var(--muted-foreground);
@@ -161,5 +182,38 @@
     background: color-mix(in oklch, var(--warning) 20%, var(--background));
     color: color-mix(in oklch, var(--warning-foreground) 75%, var(--foreground));
     border: 1px solid color-mix(in oklch, var(--warning) 40%, var(--border));
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply min-h-screen bg-gradient-to-b from-background to-muted;
+  }
+  .page-container {
+    @apply mx-auto w-full max-w-6xl px-4;
+  }
+  .page-container-md {
+    @apply mx-auto w-full max-w-4xl px-4;
+  }
+  .page-container-sm {
+    @apply mx-auto w-full max-w-3xl px-4;
+  }
+  .page-header {
+    @apply mb-6 sm:mb-8;
+  }
+  .page-title {
+    @apply text-2xl font-bold sm:text-3xl;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-muted-foreground sm:text-base;
+  }
+  .section-stack {
+    @apply space-y-6 sm:space-y-8;
+  }
+  .stack-compact {
+    @apply space-y-3 sm:space-y-4;
+  }
+  .btn-mobile-full {
+    @apply w-full sm:w-auto;
   }
 }

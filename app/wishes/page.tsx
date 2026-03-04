@@ -86,12 +86,12 @@ export default function WishesPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Button variant="outline" onClick={() => window.history.back()}>Retour</Button>
+    <div className="page-shell p-4 sm:p-6">
+      <div className="page-container-md stack-compact">
+        <Button variant="outline" onClick={() => window.history.back()} className="btn-mobile-full">Retour</Button>
         <div className="flex items-center gap-2">
           <Gift className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold">Boîte à idées</h1>
+          <h1 className="page-title">Boîte à idées</h1>
         </div>
 
         <Card>
@@ -126,11 +126,11 @@ export default function WishesPage() {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full p-2 border border-border rounded-md"
+                className="w-full p-2 border border-border rounded-md bg-background resize-y"
                 rows={3}
               />
             </div>
-            <Button onClick={createWish} disabled={!eligibility?.canCreateWish}>Soumettre</Button>
+            <Button onClick={createWish} disabled={!eligibility?.canCreateWish} className="w-full sm:w-auto">Soumettre</Button>
           </CardContent>
         </Card>
 
@@ -144,13 +144,13 @@ export default function WishesPage() {
             ) : (
               wishes.map((wish) => (
                 <div key={wish.id} className="p-3 rounded-lg border border-border">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{wish.title}</p>
-                      <p className="text-sm text-muted-foreground">{wish.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{wish.category} · {wish.status}</p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold break-words">{wish.title}</p>
+                      <p className="text-sm text-muted-foreground break-words">{wish.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1 break-words">{wish.category} · {wish.status}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => voteWish(wish.id)}>
+                    <Button variant="outline" size="sm" onClick={() => voteWish(wish.id)} className="w-full sm:w-auto">
                       Voter ({wish.votes})
                     </Button>
                   </div>

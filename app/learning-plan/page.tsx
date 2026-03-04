@@ -210,16 +210,16 @@ export default function LearningPlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-12">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="page-shell py-8 sm:py-12">
+      <div className="page-container-md">
         <div className="mb-8">
           <Button variant="outline" onClick={() => window.history.back()} className="mb-4">Retour</Button>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Votre plan sur 12 semaines</h1>
-              <p className="text-lg text-muted-foreground">Feuille de route personnalisée pour l&apos;anglais aéronautique</p>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="page-title mb-2 sm:text-4xl">Votre plan sur 12 semaines</h1>
+              <p className="page-subtitle sm:text-lg">Feuille de route personnalisée pour l&apos;anglais aéronautique</p>
             </div>
-            <Button onClick={handleDownloadPDF} disabled={isDownloading} className="gap-2">
+            <Button onClick={handleDownloadPDF} disabled={isDownloading} className="gap-2 w-full sm:w-auto">
               <Download className="w-4 h-4" />
               {isDownloading ? 'Téléchargement...' : 'Télécharger le PDF'}
             </Button>
@@ -272,8 +272,8 @@ export default function LearningPlanPage() {
 
         <div className="space-y-8">
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-center">
+              <div className="min-w-0">
                 <h3 className="text-2xl font-semibold">Objectifs 30 / 60 / 90 jours</h3>
                 <p className="text-sm text-muted-foreground">Votre feuille de route rapide</p>
               </div>
@@ -417,7 +417,7 @@ export default function LearningPlanPage() {
                   <textarea
                     value={weeklyObjectivesInput}
                     onChange={(event) => setWeeklyObjectivesInput(event.target.value)}
-                    className="w-full p-2 border border-border rounded-md"
+                    className="w-full resize-y p-2 border border-border rounded-md bg-background"
                     rows={4}
                     placeholder="Semaine 1 : ...&#10;Semaine 2 : ..."
                   />
@@ -427,7 +427,7 @@ export default function LearningPlanPage() {
                   <textarea
                     value={skillFocusesInput}
                     onChange={(event) => setSkillFocusesInput(event.target.value)}
-                    className="w-full p-2 border border-border rounded-md"
+                    className="w-full resize-y p-2 border border-border rounded-md bg-background"
                     rows={3}
                     placeholder="Prononciation claire&#10;Vocabulaire cabine"
                   />
@@ -437,7 +437,7 @@ export default function LearningPlanPage() {
                   <textarea
                     value={exerciseSuggestionsInput}
                     onChange={(event) => setExerciseSuggestionsInput(event.target.value)}
-                    className="w-full p-2 border border-border rounded-md"
+                    className="w-full resize-y p-2 border border-border rounded-md bg-background"
                     rows={3}
                     placeholder="Réponses rapides sur les procédures&#10;Vidéo de 1min"
                   />
