@@ -1,6 +1,8 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { put } from '@vercel/blob';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 
 const ALLOWED_VIDEO_TYPES = ['video/webm', 'video/mp4', 'video/quicktime', 'video/x-msvideo'];
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -92,18 +94,27 @@ export async function POST(req: Request) {
     const timestamp = Date.now();
     const blobPath = `videos/${session.user.id}/${exerciseId}-${timestamp}.${file.type.split('/')[1] || 'webm'}`;
 
-    let blob;
+    let storageUrl = '';
     try {
-      blob = await put(blobPath, file, {
-        access: 'private',
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        throw new Error('blob_token_missing');
+      }
+      const blob = await put(blobPath, file, {
+        access: 'public',
         contentType: file.type,
       });
+      storageUrl = blob.url;
     } catch (uploadError) {
-      console.error('Blob upload error:', uploadError);
-      return Response.json(
-        { message: "Échec de l'envoi de la vidéo vers le stockage" },
-        { status: 500 }
-      );
+      // Dev/local fallback: persist file in public/uploads so submission flow still works.
+      const extension = file.type.split('/')[1] || 'webm';
+      const fileName = `${exerciseId}-${timestamp}.${extension}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', session.user.id);
+      await mkdir(uploadDir, { recursive: true });
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const outputPath = path.join(uploadDir, fileName);
+      await writeFile(outputPath, buffer);
+      storageUrl = `/uploads/${session.user.id}/${fileName}`;
+      console.warn('Blob upload unavailable, fallback local storage used:', uploadError);
     }
 
     // Create video record in database with pending status
@@ -111,7 +122,7 @@ export async function POST(req: Request) {
       data: {
         userId: session.user.id,
         exerciseId,
-        blobUrl: blob.url,
+        blobUrl: storageUrl,
         duration: 0, // Will be extracted by admin during review
         status: 'PENDING',
       },
@@ -123,7 +134,7 @@ export async function POST(req: Request) {
       {
         message: 'Vidéo envoyée avec succès',
         videoId: video.id,
-        url: blob.url,
+        url: storageUrl,
       },
       { status: 201 }
     );

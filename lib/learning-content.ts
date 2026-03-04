@@ -12,6 +12,23 @@ export type ExerciseKind =
 export interface StructuredExercise {
   id: string;
   kind: ExerciseKind;
+  exerciseType?:
+    | 'multiple_choice'
+    | 'fill_blank'
+    | 'drag_drop'
+    | 'matching'
+    | 'listening'
+    | 'writing'
+    | 'speaking';
+  skill?: 'READING' | 'LISTENING' | 'WRITING' | 'SPEAKING';
+  phase?:
+    | 'INTRODUCTION'
+    | 'DISCOVERY'
+    | 'PRACTICE_CONTROLLED'
+    | 'PRACTICE_SEMI_GUIDED'
+    | 'ORAL_PRODUCTION'
+    | 'FINAL_EVALUATION';
+  difficulty?: 'easy' | 'medium' | 'hard';
   prompt: string;
   options?: string[];
   answer?: string | string[] | Record<string, string>;
@@ -123,18 +140,31 @@ export function createModuleBlueprint(cefrLevel: CefrLevel, topic: string): Modu
         'What professional phrase does the crew use?',
       ],
     },
-    exercises: [
+    exercises: createProfessionalExerciseSet(cefrLevel, topic),
+  };
+}
+
+function createProfessionalExerciseSet(cefrLevel: CefrLevel, topic: string): StructuredExercise[] {
+  return [
       {
-        id: 'qcm-1',
+        id: 'mcq-1',
         kind: 'qcm',
-        prompt: 'Choose the most professional sentence.',
+        exerciseType: 'multiple_choice',
+        skill: 'READING',
+        phase: 'PRACTICE_CONTROLLED',
+        difficulty: 'easy',
+        prompt: `Choose the best sentence for ${topic}.`,
         options: ['Sit now.', 'Please take your seat for takeoff.', 'Go there quickly.'],
         answer: 'Please take your seat for takeoff.',
-        explanation: 'Professional service English is polite, clear and specific.',
+        explanation: 'Use polite and precise language in professional situations.',
       },
       {
         id: 'fill-1',
         kind: 'fill_blank',
+        exerciseType: 'fill_blank',
+        skill: 'WRITING',
+        phase: 'PRACTICE_CONTROLLED',
+        difficulty: 'easy',
         prompt: 'Complete: "Please ____ your seat belt."',
         answer: 'fasten',
         explanation: '"Fasten your seat belt" is the standard aviation phrase.',
@@ -142,6 +172,10 @@ export function createModuleBlueprint(cefrLevel: CefrLevel, topic: string): Modu
       {
         id: 'match-1',
         kind: 'match_pairs',
+        exerciseType: 'matching',
+        skill: 'READING',
+        phase: 'PRACTICE_CONTROLLED',
+        difficulty: 'medium',
         prompt: 'Match words with French translations.',
         answer: {
           aisle: 'allée',
@@ -152,19 +186,69 @@ export function createModuleBlueprint(cefrLevel: CefrLevel, topic: string): Modu
       {
         id: 'order-1',
         kind: 'sentence_order',
+        exerciseType: 'drag_drop',
+        skill: 'WRITING',
+        phase: 'PRACTICE_CONTROLLED',
+        difficulty: 'medium',
         prompt: 'Order the sentence.',
         options: ['please', 'your', 'boarding', 'show', 'pass'],
         answer: ['please', 'show', 'your', 'boarding', 'pass'],
       },
       {
+        id: 'read-1',
+        kind: 'qcm',
+        exerciseType: 'multiple_choice',
+        skill: 'READING',
+        phase: 'PRACTICE_CONTROLLED',
+        difficulty: 'medium',
+        prompt: 'Read the short text and answer the key detail question.',
+        answer: 'The passenger asks for seat assistance.',
+        explanation: 'Reading comprehension checks detail extraction.',
+      },
+      {
+        id: 'listen-1',
+        kind: 'audio_to_word',
+        exerciseType: 'listening',
+        skill: 'LISTENING',
+        phase: 'PRACTICE_CONTROLLED',
+        difficulty: 'medium',
+        prompt: 'Listen to the short dialogue and identify the request.',
+        answer: 'water with ice',
+        explanation: 'Listening requires capturing exact service intent.',
+      },
+      {
+        id: 'write-1',
+        kind: 'fill_blank',
+        exerciseType: 'writing',
+        skill: 'WRITING',
+        phase: 'PRACTICE_SEMI_GUIDED',
+        difficulty: 'hard',
+        prompt: 'Translate to English: "Veuillez patienter quelques minutes."',
+        answer: 'Please wait a few minutes.',
+        explanation: 'Use polite imperative and natural wording.',
+      },
+      {
         id: 'oral-1',
         kind: 'oral',
+        exerciseType: 'speaking',
+        skill: 'SPEAKING',
+        phase: 'ORAL_PRODUCTION',
+        difficulty: 'hard',
         prompt: 'Say this sentence clearly.',
         expectedPhrase: 'Please fasten your seat belt now.',
         answer: 'Please fasten your seat belt now.',
       },
-    ],
-  };
+      {
+        id: 'final-1',
+        kind: 'qcm',
+        exerciseType: 'multiple_choice',
+        skill: 'READING',
+        phase: 'FINAL_EVALUATION',
+        difficulty: 'hard',
+        prompt: 'Final check: choose the most suitable complete response.',
+        answer: 'Good evening, I can help you find your seat right away.',
+      },
+    ];
 }
 
 export function computeOralScore(transcript: string, expected: string) {

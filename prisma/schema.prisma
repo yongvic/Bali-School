@@ -103,6 +103,9 @@ model Onboarding {
   // Motivation & challenges
   challenges        String[]            // array of challenge areas
   motivation        String              // why they want to learn English
+  readyInWeeks      Int                 // target weeks to be ready
+  comfortableOnCamera Boolean           // can speak on camera
+  biggestDifficulty String?             // (free text) hardest area
   
   completedAt       DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
@@ -124,6 +127,12 @@ model LearningPlan {
   // Week-by-week breakdown (stored as JSON for flexibility)
   weeklyFocus       String[]            // Array of focus areas per week
   estimatedCompletion DateTime          // projected completion date
+  goals30           String[]
+  goals60           String[]
+  goals90           String[]
+  weeklyObjectives  String[]
+  skillFocuses      String[]
+  exerciseSuggestions String[]
   
   // Relations
   modules           Module[]
@@ -159,10 +168,17 @@ model Exercise {
   module            Module              @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   
   mode              ExerciseMode        // Passenger, Accent Training, etc.
+  exerciseType      ExerciseType        @default(MULTIPLE_CHOICE)
+  skill             Skill               @default(READING)
+  phase             LearningPhase       @default(PRACTICE_CONTROLLED)
+  orderIndex        Int                 @default(0)
   title             String
   description       String?
   content           String              // exercise prompt/scenario
   pointsValue       Int                 // points earned on completion
+  achievedScore     Int                 @default(0) // 0-100 skill score for this exercise
+  isSrsReview       Boolean             @default(false)
+  dueAt             DateTime?
   
   videoSubmissions  Video[]
   completed         Boolean             @default(false)
@@ -173,6 +189,32 @@ model Exercise {
   
   @@index([userId])
   @@index([moduleId])
+}
+
+enum ExerciseType {
+  MULTIPLE_CHOICE
+  FILL_BLANK
+  DRAG_DROP
+  MATCHING
+  LISTENING
+  WRITING
+  SPEAKING
+}
+
+enum Skill {
+  READING
+  LISTENING
+  WRITING
+  SPEAKING
+}
+
+enum LearningPhase {
+  INTRODUCTION
+  DISCOVERY
+  PRACTICE_CONTROLLED
+  PRACTICE_SEMI_GUIDED
+  ORAL_PRODUCTION
+  FINAL_EVALUATION
 }
 
 enum ExerciseMode {

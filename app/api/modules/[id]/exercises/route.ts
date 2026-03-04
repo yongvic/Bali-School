@@ -23,6 +23,9 @@ export async function GET(
       select: {
         id: true,
         mode: true,
+        exerciseType: true,
+        skill: true,
+        phase: true,
         title: true,
         description: true,
         pointsValue: true,

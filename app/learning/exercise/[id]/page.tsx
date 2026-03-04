@@ -13,11 +13,15 @@ import { parseStructuredContent, type StructuredExercise } from '@/lib/learning-
 interface Exercise {
   id: string;
   mode: string;
+  exerciseType: string;
+  skill: string;
+  phase: string;
   title: string;
   description: string;
   content: string;
   pointsValue: number;
   completed: boolean;
+  achievedScore: number;
 }
 
 const exerciseModeGuides: Record<string, { title: string; instructions: string[] }> = {
@@ -159,9 +163,17 @@ export default function ExercisePage() {
   }
 
   const modeGuide = exerciseModeGuides[exercise.mode] || exerciseModeGuides.CUSTOM;
-  const isOralExercise = exercise.title.toLowerCase().includes('soumission orale') || exercise.mode === 'ACCENT_TRAINING';
+  const isOralExercise = exercise.exerciseType === 'SPEAKING';
   const structured = parseStructuredContent(exercise.content);
-  const interactiveExercise: StructuredExercise | null = structured?.exercises?.[0] || null;
+  let currentExerciseFromContent: StructuredExercise | null = null;
+  try {
+    const parsed = JSON.parse(exercise.content || '{}');
+    currentExerciseFromContent = (parsed?.currentExercise as StructuredExercise | undefined) || null;
+  } catch {
+    currentExerciseFromContent = null;
+  }
+  const interactiveExercise: StructuredExercise | null =
+    currentExerciseFromContent || structured?.exercises?.[0] || null;
 
   const validateInteractive = async () => {
     if (!interactiveExercise) return;
@@ -188,6 +200,9 @@ export default function ExercisePage() {
           exerciseId: exercise.id,
           points: isCorrect ? exercise.pointsValue : Math.max(5, Math.round(exercise.pointsValue * 0.2)),
           mode: exercise.mode.toLowerCase(),
+          exerciseType: exercise.exerciseType.toLowerCase(),
+          skill: exercise.skill,
+          achievedScore: isCorrect ? 100 : 45,
           title: exercise.title,
           content: exercise.content,
         }),
@@ -210,7 +225,9 @@ export default function ExercisePage() {
             Retour
           </Button>
           <h1 className="text-4xl font-bold mb-2">{exercise.title}</h1>
-          <p className="text-lg text-muted-foreground">{exercise.mode.replace(/_/g, ' ')}</p>
+          <p className="text-lg text-muted-foreground">
+            Compétence: {exercise.skill} - Type: {exercise.exerciseType}
+          </p>
         </div>
 
         <Tabs defaultValue="instructions" className="space-y-6">
@@ -254,7 +271,7 @@ export default function ExercisePage() {
               <CardContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
                   <p className="text-base leading-relaxed whitespace-pre-wrap">
-                    {structured?.listening?.dialogue || exercise.content}
+                    {interactiveExercise?.prompt || structured?.listening?.dialogue || exercise.content}
                   </p>
                 </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, type ChangeEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, type ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, AlertTriangle, Upload, Loader, Video, Square, Eraser, BadgeCheck, Camera } from 'lucide-react';
@@ -15,6 +15,7 @@ interface VideoUploadSectionProps {
 export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadSectionProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -22,6 +23,20 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!recordedBlob) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(recordedBlob);
+    setPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [recordedBlob]);
 
   const startRecording = async () => {
     try {
@@ -135,7 +150,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
           <CardTitle>Enregistrer votre réponse</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="rounded-lg border-2 border-dashed border-border bg-muted/50 p-8">
+          <div key={recordedBlob ? 'preview' : 'capture'} className="rounded-lg border-2 border-dashed border-border bg-muted/50 p-8">
             {recordedBlob ? (
               <div className="space-y-4">
                 <div className="text-center">
@@ -145,7 +160,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
                   <p className="font-semibold mb-2">Enregistrement prêt</p>
                   <p className="text-sm text-muted-foreground">{(recordedBlob.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
-                <video controls className="w-full rounded-lg bg-black max-h-96" src={URL.createObjectURL(recordedBlob)} />
+                {previewUrl && <video controls className="w-full rounded-lg bg-black max-h-96" src={previewUrl} />}
               </div>
             ) : (
               <div className="text-center space-y-4">
@@ -155,9 +170,18 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
             )}
           </div>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="video/*"
+            capture="user"
+            onChange={handleFilePick}
+            className="hidden"
+          />
+
           <div className="flex gap-3">
             {!recordedBlob && (
-              <>
+              <div key="record-controls" className="flex w-full gap-3">
                 {!isRecording ? (
                   <Button onClick={startRecording} className="flex-1 gap-2" size="lg"><Video className="w-4 h-4" />Démarrer l&apos;enregistrement</Button>
                 ) : (
@@ -166,19 +190,11 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
                 <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="flex-1 gap-2" size="lg">
                   <Upload className="w-4 h-4" />Choisir depuis la galerie
                 </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/*"
-                  capture="user"
-                  onChange={handleFilePick}
-                  className="hidden"
-                />
-              </>
+              </div>
             )}
 
             {recordedBlob && (
-              <>
+              <div key="review-controls" className="flex w-full gap-3">
                 <Button variant="outline" onClick={() => { setRecordedBlob(null); chunksRef.current = []; setValidation(null); }} className="flex-1" size="lg">
                   <Eraser className="w-4 h-4 mr-2" />Effacer et recommencer
                 </Button>
@@ -187,7 +203,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
                     {isValidating ? 'Validation...' : 'Valider'}
                   </Button>
                 )}
-              </>
+              </div>
             )}
           </div>
 
@@ -210,7 +226,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
                     <div>
                       <p className="font-semibold text-red-700 dark:text-red-400">Validation échouée</p>
                       <ul className="text-sm text-red-600 dark:text-red-500 mt-2 space-y-1">
-                        {validation.errors.map((error, idx) => <li key={idx}>• {error}</li>)}
+                        {validation.errors.map((error) => <li key={error}>• {error}</li>)}
                       </ul>
                     </div>
                   </div>
@@ -224,7 +240,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
                     <div>
                       <p className="font-semibold text-amber-700 dark:text-amber-400">Avertissements</p>
                       <ul className="text-sm text-amber-600 dark:text-amber-500 mt-2 space-y-1">
-                        {validation.warnings.map((warning, idx) => <li key={idx}>• {warning}</li>)}
+                        {validation.warnings.map((warning) => <li key={warning}>• {warning}</li>)}
                       </ul>
                     </div>
                   </div>

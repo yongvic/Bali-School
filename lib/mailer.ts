@@ -9,7 +9,7 @@ export async function sendPasswordResetEmail({ to, resetUrl }: ResetEmailPayload
 
   if (!apiKey || !from) {
     console.log(`[Password Reset] Email provider not configured. Reset URL for ${to}: ${resetUrl}`);
-    return;
+    return { delivered: false as const, reason: 'provider_not_configured' as const };
   }
 
   const html = `
@@ -52,4 +52,6 @@ export async function sendPasswordResetEmail({ to, resetUrl }: ResetEmailPayload
     const body = await response.text();
     throw new Error(`Resend error: ${response.status} ${body}`);
   }
+
+  return { delivered: true as const };
 }

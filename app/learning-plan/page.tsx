@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { redirect, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Download, Calendar, Target, Layers, Rocket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,12 @@ interface LearningPlan {
   weeklyFocus: string[];
   estimatedCompletion: string;
   modules: Module[];
+  goals30: string[];
+  goals60: string[];
+  goals90: string[];
+  weeklyObjectives: string[];
+  skillFocuses: string[];
+  exerciseSuggestions: string[];
 }
 
 export default function LearningPlanPage() {
@@ -35,6 +42,9 @@ export default function LearningPlanPage() {
   const [levelToApply, setLevelToApply] = useState('B1');
   const [focusInput, setFocusInput] = useState('');
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
+  const [weeklyObjectivesInput, setWeeklyObjectivesInput] = useState('');
+  const [skillFocusesInput, setSkillFocusesInput] = useState('');
+  const [exerciseSuggestionsInput, setExerciseSuggestionsInput] = useState('');
 
   if (status === 'unauthenticated') {
     redirect('/auth/signin');
@@ -69,6 +79,9 @@ export default function LearningPlanPage() {
 
         const data = await response.json();
         setPlan(data);
+        setWeeklyObjectivesInput(data.weeklyObjectives?.join('\n') || '');
+        setSkillFocusesInput(data.skillFocuses?.join('\n') || '');
+        setExerciseSuggestionsInput(data.exerciseSuggestions?.join('\n') || '');
       } catch (error) {
         toast.error('Impossible de charger votre plan');
         console.error(error);
@@ -96,10 +109,14 @@ export default function LearningPlanPage() {
       }
 
       const blob = await response.blob();
+      const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      const disposition = response.headers.get('content-disposition') || '';
+      const fileNameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const fileName = fileNameMatch?.[1] || (contentType.includes('pdf') ? 'plan-apprentissage.pdf' : 'plan-apprentissage.html');
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'plan-apprentissage.pdf';
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -129,6 +146,18 @@ export default function LearningPlanPage() {
         body: JSON.stringify({
           englishLevel: levelToApply,
           weeklyFocus: weeklyFocus.length ? weeklyFocus : undefined,
+          weeklyObjectives: weeklyObjectivesInput
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean),
+          skillFocuses: skillFocusesInput
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean),
+          exerciseSuggestions: exerciseSuggestionsInput
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean),
         }),
       });
       if (!response.ok) {
@@ -238,6 +267,80 @@ export default function LearningPlanPage() {
         </div>
 
         <div className="space-y-8">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-2xl font-semibold">Objectifs 30 / 60 / 90 jours</h3>
+                <p className="text-sm text-muted-foreground">Votre feuille de route rapide</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { label: '30 jours', goals: plan.goals30 || [] },
+                { label: '60 jours', goals: plan.goals60 || [] },
+                { label: '90 jours', goals: plan.goals90 || [] },
+              ].map((group) => (
+                <Card key={group.label} className="bg-slate-900 border border-slate-800">
+                  <CardHeader>
+                    <CardTitle>{group.label}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-slate-300">
+                    {group.goals.map((goal, index) => (
+                      <p key={`${group.label}-${index}`} className="leading-relaxed">
+                        {goal}
+                      </p>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-2xl font-semibold">Objectifs hebdomadaires</h3>
+            <p className="text-sm text-muted-foreground">La direction de chaque semaine</p>
+            <Card className="border border-slate-800 bg-slate-950/30">
+              <CardContent>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  {(plan.weeklyObjectives || []).map((objective, index) => (
+                    <li key={objective} className="rounded-md border border-slate-800 p-3 text-slate-200">
+                      <span className="font-semibold text-white">Semaine {index + 1} :</span>
+                      <p className="text-xs text-slate-400 mt-1">{objective}</p>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border border-slate-800 bg-slate-950/30">
+              <CardHeader>
+                <CardTitle>Compétences à maîtriser</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-slate-200">
+                {(plan.skillFocuses || []).map((skill) => (
+                  <div key={skill} className="rounded-md border border-slate-800 px-3 py-2">
+                    {skill}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border border-slate-800 bg-slate-950/30">
+              <CardHeader>
+                <CardTitle>Exercices adaptés</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-slate-200">
+                {(plan.exerciseSuggestions || []).map((exercise) => (
+                  <div key={exercise} className="rounded-md border border-slate-800 px-3 py-2">
+                    {exercise}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
           {[{ phase: 'Fondation', weeks: '1-4' }, { phase: 'Intermédiaire', weeks: '5-8' }, { phase: 'Avancé', weeks: '9-12' }].map((phase) => (
             <div key={phase.phase}>
               <div className="p-4 rounded-lg border bg-primary/5 border-primary/20 mb-4">
@@ -284,26 +387,58 @@ export default function LearningPlanPage() {
           </CardContent>
         </Card>
 
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Modifier mon plan</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">Vous pouvez ajuster le niveau et les axes hebdomadaires sans refaire l&apos;onboarding.</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input value={levelToApply} onChange={(event) => setLevelToApply(event.target.value.toUpperCase())} placeholder="Niveau (A1-C1)" />
-              <Input
-                className="md:col-span-2"
-                value={focusInput}
-                onChange={(event) => setFocusInput(event.target.value)}
-                placeholder="Axes hebdomadaires séparés par des virgules"
-              />
-            </div>
-            <Button onClick={handleUpdatePlan} disabled={isUpdatingPlan}>
-              {isUpdatingPlan ? 'Mise à jour...' : 'Mettre à jour le plan'}
-            </Button>
-          </CardContent>
-        </Card>
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Modifier mon plan</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">Vous pouvez ajuster le niveau et les axes hebdomadaires sans refaire l&apos;onboarding.</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Input value={levelToApply} onChange={(event) => setLevelToApply(event.target.value.toUpperCase())} placeholder="Niveau (A1-C1)" />
+                <Input
+                  className="md:col-span-2"
+                  value={focusInput}
+                  onChange={(event) => setFocusInput(event.target.value)}
+                  placeholder="Axes hebdomadaires séparés par des virgules"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-1">
+                  <Label>Objectifs hebdomadaires (une ligne = une semaine)</Label>
+                  <textarea
+                    value={weeklyObjectivesInput}
+                    onChange={(event) => setWeeklyObjectivesInput(event.target.value)}
+                    className="w-full p-2 border border-border rounded-md"
+                    rows={4}
+                    placeholder="Semaine 1 : ...&#10;Semaine 2 : ..."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Compétences à renforcer (ligne par compétence)</Label>
+                  <textarea
+                    value={skillFocusesInput}
+                    onChange={(event) => setSkillFocusesInput(event.target.value)}
+                    className="w-full p-2 border border-border rounded-md"
+                    rows={3}
+                    placeholder="Prononciation claire&#10;Vocabulaire cabine"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Exercices suggérés (une ligne par exercice)</Label>
+                  <textarea
+                    value={exerciseSuggestionsInput}
+                    onChange={(event) => setExerciseSuggestionsInput(event.target.value)}
+                    className="w-full p-2 border border-border rounded-md"
+                    rows={3}
+                    placeholder="Réponses rapides sur les procédures&#10;Vidéo de 1min"
+                  />
+                </div>
+              </div>
+              <Button onClick={handleUpdatePlan} disabled={isUpdatingPlan}>
+                {isUpdatingPlan ? 'Mise à jour...' : 'Mettre à jour le plan'}
+              </Button>
+            </CardContent>
+          </Card>
       </div>
     </div>
   );

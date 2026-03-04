@@ -33,6 +33,11 @@ export default function DashboardPage() {
   const session = sessionState?.data;
   const router = useRouter();
   const { data: stats, isLoading } = useSWR('/api/dashboard/stats', fetcher);
+  const { data: learningPlan } = useSWR('/api/learning-plan', async (url) => {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return response.json();
+  });
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -207,6 +212,30 @@ export default function DashboardPage() {
               );
             })}
           </div>
+
+          {learningPlan && session.user.role === 'STUDENT' && (
+            <Card className="border-slate-800 bg-slate-900/70">
+              <CardHeader>
+                <CardTitle className="text-base">Votre plan personnalisé</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-slate-300">
+                  Objectif 30 jours : {learningPlan.goals30?.[0] || 'Débuter forte'}
+                </p>
+                <p className="text-sm text-slate-300">
+                  Compétence prioritaire : {learningPlan.skillFocuses?.[0] || 'Communication professionnelle'}
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" size="sm" onClick={() => router.push('/learning-plan')}>
+                    Voir le plan
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => router.push('/learning-plan')}>
+                    Télécharger le plan
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {session.user.role === 'STUDENT' && (
             <Card className="border-2 border-primary/20 bg-primary/5">

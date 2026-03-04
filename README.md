@@ -1,6 +1,40 @@
 # Ravi's
 
-Ravi's est une plateforme d'apprentissage de l'anglais (UI en français, contenus pédagogiques en anglais), orientée CEFR et scénarios métiers aéronautiques.
+Ravi's est une plateforme d'apprentissage de l'anglais professionnel (interface française, contenus pédagogiques en anglais) avec progression CEFR, exercices multi-compétences et suivi pédagogique.
+
+## Fonctionnalités principales
+
+- Modules multi-compétences: Reading, Listening, Writing, Speaking.
+- Progression pédagogique structurée:
+  - Introduction
+  - Découverte (input)
+  - Pratique contrôlée
+  - Pratique semi-guidée
+  - Production orale (fin de module)
+  - Évaluation finale
+- Types d'exercices:
+  - QCM
+  - Phrase à compléter
+  - Drag & drop
+  - Association
+  - Compréhension écrite
+  - Compréhension orale
+  - Writing
+  - Speaking
+- Scoring par compétence (reading/listening/writing/speaking).
+- Validation de module par seuil global + minimum speaking.
+- Répétition espacée (SRS): les erreurs faibles reviennent plus tard.
+- Soumission vidéo orale (caméra ou galerie) avec revue admin.
+- Carte de progression aéroport.
+
+## Stack technique
+
+- Next.js App Router
+- TypeScript
+- Prisma + PostgreSQL (Neon)
+- Auth.js / NextAuth
+- Tailwind + composants UI
+- Vercel Blob (ou fallback local en dev pour upload vidéo)
 
 ## Installation
 
@@ -8,42 +42,53 @@ Ravi's est une plateforme d'apprentissage de l'anglais (UI en français, contenu
 npm install
 ```
 
-Configurer `.env.local` (ou `.env`) puis générer Prisma:
+Configurer l'environnement via `.env` ou `.env.local`.
 
-```bash
-npx prisma generate
-```
+Variables clés:
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
+- `BLOB_READ_WRITE_TOKEN` (optionnel en dev, recommandé en prod)
+- `RESEND_API_KEY` + `EMAIL_FROM` (email reset password)
 
-## Exécution
+## Commandes utiles
 
 ```bash
 npm run dev
-```
-
-Build production:
-
-```bash
 npm run build
 npm run start
+npm run regenerate:modules
 ```
 
-## Fonctionnalités clés
+## État pédagogique actuel
 
-- Progression CEFR A1 -> C1 avec déblocage conditionné à la validation complète du module.
-- Modules structurés: introduction, vocabulaire, grammaire, compréhension orale, exercices interactifs.
-- Production orale: micro, transcription, score, feedback immédiat.
-- Soumission vidéo de fin de module: caméra directe ou galerie.
-- Carte aéroport interactive de progression.
-- Plan d'apprentissage persistant et modifiable sans refaire l'onboarding.
-- Souhaits débloqués uniquement après objectif hebdomadaire atteint.
+- L'ancienne logique "tout vocal" a été retirée.
+- Les modules sont régénérés en format multi-exercices équilibré.
+- La production orale n'est plus dominante et intervient en fin de module.
 
-## Scripts utiles
+## Dépannage rapide
 
-- `npm run dev`
-- `npm run build`
-- `npm run start`
-- `npx prisma generate`
+1. Téléchargement plan échoue en PDF:
+- fallback HTML automatique côté backend.
 
-## Documentation
+2. Reset password ne reçoit pas d'email:
+- vérifier `RESEND_API_KEY` + `EMAIL_FROM`.
+- en développement, l'API retourne un lien de réinitialisation de secours.
 
-Voir `PRODUCT_SPEC.md` pour le résumé technique et fonctionnel consolidé.
+3. Upload vidéo échoue:
+- en absence de token Blob, fallback local dans `public/uploads/...`.
+
+4. Modules hérités incohérents:
+- exécuter `npm run regenerate:modules`.
+
+## Sécurité
+
+- Authentification par session.
+- Validation serveur des payloads.
+- Mot de passe hashé.
+- Token de réinitialisation expirant.
+
+## Documentation complémentaire
+
+- Guide de lancement serveurs et accès admin: `SERVERS_ADMIN.md`
+- Spécification produit consolidée: `PRODUCT_SPEC.md`

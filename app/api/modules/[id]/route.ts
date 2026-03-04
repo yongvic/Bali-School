@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     
@@ -12,8 +12,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       );
     }
 
+    const { id: moduleId } = await params;
     const module = await prisma.module.findUnique({
-      where: { id: params.id },
+      where: { id: moduleId },
       include: {
         learningPlan: {
           select: { userId: true },
@@ -22,13 +23,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           select: {
             id: true,
             mode: true,
+            exerciseType: true,
+            skill: true,
+            phase: true,
+            orderIndex: true,
             title: true,
             description: true,
             content: true,
             pointsValue: true,
             completed: true,
+            achievedScore: true,
           },
-          orderBy: { createdAt: 'asc' },
+          orderBy: { orderIndex: 'asc' },
         },
       },
     });
@@ -69,7 +75,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const blocked = previousModules.some((m) => {
       const allCompleted = m.exercises.length > 0 && m.exercises.every((e) => e.completed);
       const oralApproved = m.exercises
-        .filter((e) => e.title.toLowerCase().includes('soumission orale'))
+        .filter((e) => e.exerciseType === 'SPEAKING')
         .every((e) => e.videoSubmissions.some((v) => v.status === 'APPROVED'));
       const hasRejected = m.exercises.some((e) =>
         e.videoSubmissions.some((v) => ['REJECTED', 'REVISION_NEEDED'].includes(v.status))

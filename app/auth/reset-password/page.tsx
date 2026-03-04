@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { ArrowLeft } from 'lucide-react';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -95,6 +96,10 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2">
+          <Button variant="outline" size="sm" onClick={() => window.history.back()} className="w-fit">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
           <CardTitle className="text-2xl">Réinitialiser le mot de passe</CardTitle>
           <CardDescription>Définissez un nouveau mot de passe sécurisé.</CardDescription>
         </CardHeader>

@@ -5,6 +5,12 @@ import { z } from 'zod';
 
 const updatePlanSchema = z.object({
   weeklyFocus: z.array(z.string().min(2)).min(1).max(12).optional(),
+  weeklyObjectives: z.array(z.string().min(3)).max(12).optional(),
+  skillFocuses: z.array(z.string().min(3)).max(10).optional(),
+  exerciseSuggestions: z.array(z.string().min(3)).max(10).optional(),
+  goals30: z.array(z.string().min(5)).max(5).optional(),
+  goals60: z.array(z.string().min(5)).max(5).optional(),
+  goals90: z.array(z.string().min(5)).max(5).optional(),
   englishLevel: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
 });
 
@@ -63,10 +69,37 @@ export async function PUT(req: Request) {
       return Response.json({ message: "Aucun plan d'apprentissage trouvé" }, { status: 404 });
     }
 
-    const updates: { weeklyFocus?: string[]; estimatedCompletion?: Date } = {};
+    const updates: {
+      weeklyFocus?: string[];
+      weeklyObjectives?: string[];
+      skillFocuses?: string[];
+      exerciseSuggestions?: string[];
+      goals30?: string[];
+      goals60?: string[];
+      goals90?: string[];
+      estimatedCompletion?: Date;
+    } = {};
     if (payload.weeklyFocus) {
       updates.weeklyFocus = payload.weeklyFocus;
       updates.estimatedCompletion = new Date(Date.now() + 12 * 7 * 24 * 60 * 60 * 1000);
+    }
+    if (payload.weeklyObjectives) {
+      updates.weeklyObjectives = payload.weeklyObjectives;
+    }
+    if (payload.skillFocuses) {
+      updates.skillFocuses = payload.skillFocuses;
+    }
+    if (payload.exerciseSuggestions) {
+      updates.exerciseSuggestions = payload.exerciseSuggestions;
+    }
+    if (payload.goals30) {
+      updates.goals30 = payload.goals30;
+    }
+    if (payload.goals60) {
+      updates.goals60 = payload.goals60;
+    }
+    if (payload.goals90) {
+      updates.goals90 = payload.goals90;
     }
 
     await prisma.learningPlan.update({
@@ -103,52 +136,76 @@ async function rebuildPlanModules(planId: string, userId: string, englishLevel: 
   });
 
   const levelPointTarget = englishLevel.startsWith('A') ? 220 : englishLevel.startsWith('B') ? 280 : 340;
-  const modeTemplates: Array<{ mode: any; title: string; description: string; points: number; topic: string }> = [
-    { mode: 'PASSENGER', title: 'Passenger Mode', description: 'Passenger requests in context.', points: 60, topic: 'passenger service' },
-    { mode: 'ACCENT_TRAINING', title: 'Accent Training Mode', description: 'Pronunciation and rhythm refinement.', points: 65, topic: 'pronunciation' },
-    { mode: 'SECRET_CHALLENGE', title: 'Secret Challenge Mode', description: 'Unexpected scenario response.', points: 75, topic: 'unexpected service events' },
-    { mode: 'WHEEL_OF_ENGLISH', title: 'Wheel of English', description: 'Random topic with timed speaking.', points: 60, topic: 'fluency and reaction' },
-    { mode: 'LOVE_AND_ENGLISH', title: 'Love & English Mode', description: 'Warm and premium customer language.', points: 55, topic: 'empathy and tone' },
-    { mode: 'EMERGENCY', title: 'Mode Urgence', description: 'Critical safety communication.', points: 80, topic: 'emergency communication' },
-    { mode: 'INTERVIEW_COMPANY', title: 'Mode Interview Compagnie', description: 'Interview readiness drills.', points: 70, topic: 'airline interview communication' },
-    { mode: 'LOST_PASSENGER', title: 'Lost Passenger Mode', description: 'Helping disoriented passengers.', points: 65, topic: 'airport guidance' },
+  const topics = [
+    'passenger service',
+    'accent clarity',
+    'unexpected situations',
+    'professional communication',
+    'safety and urgency',
+    'interview preparation',
+    'lost passenger assistance',
   ];
 
   for (let week = 1; week <= 12; week++) {
     const cefrLevel = levelByWeek(week);
+    const topic = topics[(week - 1) % topics.length];
+    const blueprint = createModuleBlueprint(cefrLevel, topic);
     const module = await prisma.module.create({
       data: {
         planId,
         week,
         title: `Semaine ${week} - Niveau ${cefrLevel}`,
-        description: `Module ${cefrLevel} centré sur les compétences écoute, vocabulaire, grammaire et production orale.`,
+        description: `Module ${cefrLevel} structuré: découverte, pratique contrôlée, semi-guidée, oral final et évaluation.`,
         targetPoints: levelPointTarget,
       },
     });
 
-    const picks = [modeTemplates[(week - 1) % modeTemplates.length], modeTemplates[week % modeTemplates.length]];
-    picks.push({
-      mode: 'ROLE_PLAY',
-      title: 'Soumission orale de fin de module',
-      description: 'Vidéo finale obligatoire pour valider le module et le niveau.',
-      points: 90,
-      topic: 'final oral assessment',
-    });
-
-    for (const template of picks) {
-      const blueprint = createModuleBlueprint(cefrLevel, template.topic);
+    let orderIndex = 1;
+    for (const ex of blueprint.exercises) {
       await prisma.exercise.create({
         data: {
           userId,
           moduleId: module.id,
-          mode: template.mode,
-          title: template.title,
-          description: template.description,
-          content: JSON.stringify(blueprint),
-          pointsValue: template.points,
+          mode: ex.exerciseType === 'speaking' ? 'ROLE_PLAY' : 'CUSTOM',
+          exerciseType: mapExerciseType(ex.exerciseType),
+          skill: ex.skill || 'READING',
+          phase: ex.phase || 'PRACTICE_CONTROLLED',
+          orderIndex,
+          title:
+            ex.exerciseType === 'speaking'
+              ? 'Production orale de fin de module'
+              : `${(ex.exerciseType || 'multiple_choice').replace('_', ' ')} - ${topic}`,
+          description: ex.explanation || `Exercice ${ex.exerciseType || 'multiple_choice'} pour ${topic}`,
+          content: JSON.stringify({
+            ...blueprint,
+            currentExercise: ex,
+          }),
+          pointsValue: ex.phase === 'ORAL_PRODUCTION' ? 20 : ex.phase === 'FINAL_EVALUATION' ? 5 : 10,
         },
       });
+      orderIndex += 1;
     }
+  }
+}
+
+function mapExerciseType(type?: string) {
+  switch (type) {
+    case 'multiple_choice':
+      return 'MULTIPLE_CHOICE' as const;
+    case 'fill_blank':
+      return 'FILL_BLANK' as const;
+    case 'drag_drop':
+      return 'DRAG_DROP' as const;
+    case 'matching':
+      return 'MATCHING' as const;
+    case 'listening':
+      return 'LISTENING' as const;
+    case 'writing':
+      return 'WRITING' as const;
+    case 'speaking':
+      return 'SPEAKING' as const;
+    default:
+      return 'MULTIPLE_CHOICE' as const;
   }
 }
 

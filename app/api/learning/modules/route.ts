@@ -48,14 +48,23 @@ export async function GET() {
       const hasRefusedVideo = module.exercises.some((exercise) =>
         exercise.videoSubmissions.some((video) => ['REJECTED', 'REVISION_NEEDED'].includes(video.status))
       );
-      const oralExercises = module.exercises.filter((exercise) =>
-        exercise.title.toLowerCase().includes('soumission orale')
-      );
+      const oralExercises = module.exercises.filter((exercise) => exercise.exerciseType === 'SPEAKING');
       const hasApprovedOral = oralExercises.every((exercise) =>
         exercise.videoSubmissions.some((video) => video.status === 'APPROVED')
       );
       const allExercisesCompleted = module.exercises.length > 0 && module.exercises.every((exercise) => exercise.completed);
-      const moduleValidated = allExercisesCompleted && hasApprovedOral && !hasRefusedVideo;
+      const reading = averageSkill(module.exercises, 'READING');
+      const listening = averageSkill(module.exercises, 'LISTENING');
+      const writing = averageSkill(module.exercises, 'WRITING');
+      const speaking = averageSkill(module.exercises, 'SPEAKING');
+      const globalScore = Math.round((reading + listening + writing + speaking) / 4);
+
+      const moduleValidated =
+        allExercisesCompleted &&
+        hasApprovedOral &&
+        !hasRefusedVideo &&
+        globalScore >= 70 &&
+        speaking >= 60;
 
       const locked = !previousModuleValidated || !withinLearnerRange;
       const blockedReason = !withinLearnerRange
@@ -71,6 +80,7 @@ export async function GET() {
         cefrLevel,
         locked,
         moduleValidated,
+        competencyScores: { reading, listening, writing, speaking, global: globalScore },
         blockedReason,
       };
     });
@@ -92,5 +102,14 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+function averageSkill(
+  exercises: Array<{ skill: string; achievedScore: number }>,
+  skill: 'READING' | 'LISTENING' | 'WRITING' | 'SPEAKING'
+) {
+  const selected = exercises.filter((exercise) => exercise.skill === skill);
+  if (!selected.length) return 0;
+  return Math.round(selected.reduce((sum, exercise) => sum + (exercise.achievedScore || 0), 0) / selected.length);
 }
 

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { ArrowLeft } from 'lucide-react';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -48,6 +49,10 @@ export default function SignInPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2">
+          <Button variant="outline" size="sm" onClick={() => window.history.back()} className="w-fit">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
           <CardTitle className="text-2xl">Connexion</CardTitle>
           <CardDescription>Connectez-vous à votre compte Ravi&apos;s</CardDescription>
         </CardHeader>

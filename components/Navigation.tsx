@@ -17,6 +17,11 @@ export function Navigation() {
     return null;
   }
 
+  // Avoid duplicate headers on pages that already render a dedicated top bar.
+  if (pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+    return null;
+  }
+
   const isActive = (path: string) => pathname.startsWith(path);
 
   const studentLinks = [

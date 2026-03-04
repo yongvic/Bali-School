@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { redirect, useParams } from 'next/navigation';
+import { redirect, useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Video } from 'lucide-react';
 
 interface VideoReview {
   id: string;
@@ -26,6 +26,7 @@ export default function VideoReviewPage() {
   const session = sessionState?.data;
   const params = useParams();
   const videoId = params.id as string;
+  const router = useRouter();
 
   const [video, setVideo] = useState<VideoReview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +42,7 @@ export default function VideoReviewPage() {
     redirect('/auth/signin');
   }
 
-  if (session.user.role !== 'ADMIN') {
+  if (session?.user?.role !== 'ADMIN') {
     redirect('/dashboard');
   }
 
@@ -55,7 +56,7 @@ export default function VideoReviewPage() {
         const data = await response.json();
         setVideo(data);
       } catch (error) {
-        toast.error('Failed to load video');
+        toast.error('Impossible de charger la vidéo');
         console.error(error);
       } finally {
         setIsLoading(false);
@@ -67,7 +68,7 @@ export default function VideoReviewPage() {
 
   const handleSubmitFeedback = async () => {
     if (!textFeedback.trim()) {
-      toast.error('Please provide feedback');
+      toast.error('Merci de saisir un feedback');
       return;
     }
 
@@ -80,20 +81,20 @@ export default function VideoReviewPage() {
         body: JSON.stringify({
           decision,
           textFeedback,
-          grade: parseInt(grade),
-          strengths: strengths.split('\n').filter(s => s.trim()),
-          improvements: improvements.split('\n').filter(i => i.trim()),
+          grade: parseInt(grade, 10),
+          strengths: strengths.split('\n').filter((s) => s.trim()),
+          improvements: improvements.split('\n').filter((s) => s.trim()),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit feedback');
+        throw new Error('Erreur de soumission du feedback');
       }
 
-      toast.success('Feedback submitted successfully!');
-      redirect('/admin/dashboard');
+      toast.success('Feedback envoyé');
+      router.push('/admin');
     } catch (error) {
-      toast.error('Failed to submit feedback');
+      toast.error('Impossible de soumettre le feedback');
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -102,223 +103,204 @@ export default function VideoReviewPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Chargement de la vidéo...</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </CardContent>
-        </Card>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Video className="mx-auto h-10 w-10 text-primary animate-pulse" />
+          <p className="text-sm text-slate-400">Chargement de la vidéo...</p>
+        </div>
       </div>
     );
   }
 
   if (!video) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
-        <Card className="w-full max-w-sm">
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Card className="w-full max-w-sm border-slate-800">
           <CardHeader>
             <CardTitle>Vidéo introuvable</CardTitle>
           </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-400">La vidéo a peut-être déjà été traitée.</p>
+          </CardContent>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <Button variant="outline" onClick={() => window.history.back()} className="mb-4">
-            ← Retour au dashboard
-          </Button>
-          <h1 className="text-4xl font-bold mb-2">Revue vidéo élève</h1>
-          <p className="text-lg text-muted-foreground">
-            {video.studentName} - {video.exerciseTitle}
+    <div className="space-y-10">
+      <section className="space-y-2">
+        <Button variant="outline" onClick={() => router.back()} className="text-sm font-medium">
+          ← Retour au tableau
+        </Button>
+        <div>
+          <p className="text-xs uppercase tracking-[0.4em] text-slate-500">Revue vidéo</p>
+          <h1 className="text-3xl font-semibold text-white">
+            {video.studentName} · {video.exerciseTitle}
+          </h1>
+          <p className="text-sm text-slate-400">
+            Soumise le {new Date(video.submittedAt).toLocaleString()}
           </p>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Video Player */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Soumission vidéo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <video
-                  controls
-                  className="w-full rounded-lg bg-black max-h-96"
-                  src={video.blobUrl}
-                />
-                <div className="mt-4 text-sm text-muted-foreground">
-                  <p>Soumis: {new Date(video.submittedAt).toLocaleString()}</p>
-                  <p>Élève: {video.studentName}</p>
-                  <p>Exercice: {video.exerciseTitle}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle>Vidéo</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
+                <video controls className="h-full w-full object-cover" src={video.blobUrl} />
+              </div>
+              <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                <span className="rounded-full border border-slate-700 px-3 py-1">Statut : {video.status}</span>
+                <span className="rounded-full border border-slate-700 px-3 py-1">ID : {video.id}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Feedback Form */}
-          <div className="space-y-6">
-            <Tabs defaultValue="decision" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="decision">Décision</TabsTrigger>
-                <TabsTrigger value="feedback">Feedback</TabsTrigger>
-              </TabsList>
+        <div className="space-y-4">
+          <Tabs defaultValue="decision" className="space-y-4">
+            <TabsList className="grid grid-cols-2 gap-2 bg-slate-900 px-1 rounded-lg border border-slate-800">
+              <TabsTrigger value="decision">Décision</TabsTrigger>
+              <TabsTrigger value="feedback">Feedback</TabsTrigger>
+            </TabsList>
 
-              {/* Decision Tab */}
-              <TabsContent value="decision" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Décision de revue</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <RadioGroup value={decision} onValueChange={(value: any) => setDecision(value)}>
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3 p-3 rounded-lg border border-green-500/20 hover:bg-green-500/5 cursor-pointer">
-                          <RadioGroupItem value="APPROVED" id="approved" />
-                          <Label htmlFor="approved" className="cursor-pointer flex-1">
-                            <div className="flex items-center gap-2 font-semibold text-green-700 dark:text-green-400">
-                              <CheckCircle className="w-4 h-4" />
-                              Approuver
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              La vidéo respecte les exigences
-                            </p>
-                          </Label>
-                        </div>
-
-                        <div className="flex items-start gap-3 p-3 rounded-lg border border-orange-500/20 hover:bg-orange-500/5 cursor-pointer">
-                          <RadioGroupItem value="REVISION_NEEDED" id="revision" />
-                          <Label htmlFor="revision" className="cursor-pointer flex-1">
-                            <div className="flex items-center gap-2 font-semibold text-orange-700 dark:text-orange-400">
-                              <AlertCircle className="w-4 h-4" />
-                              Révision demandée
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Envoyer des retours et demander une nouvelle soumission
-                            </p>
-                          </Label>
-                        </div>
-
-                        <div className="flex items-start gap-3 p-3 rounded-lg border border-red-500/20 hover:bg-red-500/5 cursor-pointer">
-                          <RadioGroupItem value="REJECTED" id="rejected" />
-                          <Label htmlFor="rejected" className="cursor-pointer flex-1">
-                            <div className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-400">
-                              <XCircle className="w-4 h-4" />
-                              Refuser
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Ne respecte pas les exigences
-                            </p>
-                          </Label>
-                        </div>
+            <TabsContent value="decision" className="space-y-4">
+              <Card className="border-slate-800 bg-slate-900">
+                <CardHeader>
+                  <CardTitle>Décision</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <RadioGroup value={decision} onValueChange={(value) => setDecision(value as typeof decision)}>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3 rounded-lg border border-green-500/20 bg-slate-950/20 p-3">
+                        <RadioGroupItem value="APPROVED" id="approved" />
+                        <Label htmlFor="approved" className="flex-1">
+                          <div className="flex items-center gap-2 text-green-500 font-semibold">
+                            <CheckCircle className="h-4 w-4" />
+                            Approuver
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">Offrir des points et finaliser la revue.</p>
+                        </Label>
                       </div>
-                    </RadioGroup>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Note</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={grade}
-                        onChange={(e) => setGrade(e.target.value)}
-                        className="w-full"
-                      />
-                      <div className="text-3xl font-bold text-center text-primary">
-                        {grade}/100
+                      <div className="flex items-start gap-3 rounded-lg border border-orange-500/20 bg-slate-950/20 p-3">
+                        <RadioGroupItem value="REVISION_NEEDED" id="revision" />
+                        <Label htmlFor="revision" className="flex-1">
+                          <div className="flex items-center gap-2 text-orange-500 font-semibold">
+                            <AlertCircle className="h-4 w-4" />
+                            Révision demandée
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">Soumettre des retours précis et laisser un nouveau passage.</p>
+                        </Label>
+                      </div>
+                      <div className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-slate-950/20 p-3">
+                        <RadioGroupItem value="REJECTED" id="rejected" />
+                        <Label htmlFor="rejected" className="flex-1">
+                          <div className="flex items-center gap-2 text-red-500 font-semibold">
+                            <XCircle className="h-4 w-4" />
+                            Refuser
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">Laisser un feedback ferme pour recommencer.</p>
+                        </Label>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
 
-              {/* Feedback Tab */}
-              <TabsContent value="feedback" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Feedback texte</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="feedback">Retour pour l'élève</Label>
-                      <Textarea
-                        id="feedback"
-                        value={textFeedback}
-                        onChange={(e) => setTextFeedback(e.target.value)}
-                        placeholder="Donnez un feedback constructif sur la performance de l'élève..."
-                        rows={4}
-                        className="resize-none"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+              <Card className="border-slate-800 bg-slate-900">
+                <CardHeader>
+                  <CardTitle>Note</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    className="w-full"
+                  />
+                  <div className="mt-2 text-center text-2xl font-semibold text-white">
+                    {grade}/100
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Points forts</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="strengths">Ce qui a bien fonctionné (une ligne par point)</Label>
-                      <Textarea
-                        id="strengths"
-                        value={strengths}
-                        onChange={(e) => setStrengths(e.target.value)}
-                        placeholder="Prononciation claire&#10;Bonne confiance&#10;Intonation naturelle"
-                        rows={3}
-                        className="resize-none"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+            <TabsContent value="feedback" className="space-y-4">
+              <Card className="border-slate-800 bg-slate-900">
+                <CardHeader>
+                  <CardTitle>Feedback texte</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Label htmlFor="feedback" className="text-xs text-slate-400">
+                    Retour principal
+                  </Label>
+                  <Textarea
+                    id="feedback"
+                    value={textFeedback}
+                    onChange={(e) => setTextFeedback(e.target.value)}
+                    placeholder="Énoncez clairement ce qui fonctionne et ce qu'il faut corriger."
+                    rows={4}
+                    className="resize-none bg-slate-950 border-slate-800"
+                  />
+                </CardContent>
+              </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Axes d'amélioration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="improvements">Ce qu'il faut améliorer (une ligne par point)</Label>
-                      <Textarea
-                        id="improvements"
-                        value={improvements}
-                        onChange={(e) => setImprovements(e.target.value)}
-                        placeholder="Travailler l'accentuation&#10;Ralentir légèrement&#10;Renforcer les voyelles"
-                        rows={3}
-                        className="resize-none"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+              <Card className="border-slate-800 bg-slate-900">
+                <CardHeader>
+                  <CardTitle>Points forts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Label htmlFor="strengths" className="text-xs text-slate-400">
+                    Une ligne par point
+                  </Label>
+                  <Textarea
+                    id="strengths"
+                    value={strengths}
+                    onChange={(e) => setStrengths(e.target.value)}
+                    placeholder="Bonne diction&#10;Confiance affichée&#10;Structure claire"
+                    rows={3}
+                    className="resize-none bg-slate-950 border-slate-800"
+                  />
+                </CardContent>
+              </Card>
 
-            {/* Submit Button */}
-            <Button
-              onClick={handleSubmitFeedback}
-              disabled={isSubmitting}
-              size="lg"
-              className="w-full"
-            >
-              {isSubmitting ? 'Soumission...' : 'Soumettre le feedback'}
-            </Button>
-          </div>
+              <Card className="border-slate-800 bg-slate-900">
+                <CardHeader>
+                  <CardTitle>Axes d'amélioration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Label htmlFor="improvements" className="text-xs text-slate-400">
+                    Indiquez les prochaines étapes
+                  </Label>
+                  <Textarea
+                    id="improvements"
+                    value={improvements}
+                    onChange={(e) => setImprovements(e.target.value)}
+                    placeholder="Ralentir un peu&#10;Accentuer les voyelles&#10;Ajouter un mot de conclusion"
+                    rows={3}
+                    className="resize-none bg-slate-950 border-slate-800"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
+
+      <Button
+        onClick={handleSubmitFeedback}
+        disabled={isSubmitting}
+        className="w-full md:w-1/2"
+      >
+        {isSubmitting ? 'Soumission...' : 'Soumettre le feedback'}
+      </Button>
     </div>
   );
 }
-

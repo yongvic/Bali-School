@@ -13,11 +13,14 @@ import { toast } from 'sonner';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const steps = [
-  { id: 'goal', title: 'Votre objectif', description: 'Pourquoi êtes-vous ici ?' },
-  { id: 'level', title: "Niveau d'anglais", description: 'Évaluez votre niveau actuel' },
-  { id: 'availability', title: 'Votre disponibilité', description: 'Combien de temps pouvez-vous consacrer ?' },
-  { id: 'challenges', title: 'Difficultés', description: 'Quels domaines améliorer ?' },
-  { id: 'airport', title: 'Aéroport de référence', description: 'Votre aéroport principal' },
+  { id: 'goal', title: 'Pourquoi maintenant ?', description: 'Votre motivation pour devenir hôtesse' },
+  { id: 'level', title: "Votre niveau d'anglais", description: 'Évaluez votre niveau actuel' },
+  { id: 'availability', title: 'Votre disponibilité', description: 'Temps quotidien et hebdomadaire' },
+  { id: 'timeline', title: 'Votre échéance', description: 'Quand voulez-vous être prête ?' },
+  { id: 'camera', title: 'Face caméra ?', description: 'Êtes-vous à l’aise devant votre caméra ?' },
+  { id: 'difficulty', title: 'Grande difficulté', description: "Dites-nous ce qui freine votre progression" },
+  { id: 'challenges', title: 'Axes d’amélioration', description: 'Sélectionnez vos priorités' },
+  { id: 'airport', title: 'Aéroport et motivation', description: 'Derniers détails pour personnaliser le plan' },
 ];
 
 const challengeOptions = [
@@ -51,6 +54,9 @@ export default function OnboardingPage() {
     motivation: '',
     airportCode: '',
     airportName: '',
+    readyInWeeks: 12,
+    comfortableOnCamera: true,
+    biggestDifficulty: '',
   });
 
   const handleChallengeToggle = (challenge: string) => {
@@ -77,6 +83,9 @@ export default function OnboardingPage() {
           motivation: formData.motivation,
           airportCode: formData.airportCode,
           airportName: formData.airportName,
+          readyInWeeks: String(formData.readyInWeeks),
+          comfortableOnCamera: formData.comfortableOnCamera,
+          biggestDifficulty: formData.biggestDifficulty,
         }),
       });
 
@@ -105,8 +114,12 @@ export default function OnboardingPage() {
       case 2:
         return formData.dailyMinutes > 0 && formData.weeklyGoal > 0;
       case 3:
+        return formData.readyInWeeks >= 4;
+      case 5:
+        return formData.biggestDifficulty.trim().length >= 10;
+      case 6:
         return formData.challenges.length > 0;
-      case 4:
+      case 7:
         return !!formData.airportCode && !!formData.airportName && formData.motivation.trim().length >= 10;
       default:
         return true;
@@ -231,6 +244,56 @@ export default function OnboardingPage() {
 
             {currentStep === 3 && (
               <div className="space-y-4">
+                <Label>Dans combien de semaines voulez-vous être prête ?</Label>
+                <input
+                  type="range"
+                  min="4"
+                  max="52"
+                  step="1"
+                  value={formData.readyInWeeks}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, readyInWeeks: Number(event.target.value) }))}
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Objectif : être prête dans {formData.readyInWeeks} semaines
+                </p>
+              </div>
+            )}
+
+            {currentStep === 4 && (
+              <div className="space-y-4">
+                <Label>Avez-vous l’habitude de parler devant une caméra ?</Label>
+                <div className="flex gap-4">
+                  {['Oui', 'Non'].map((option) => (
+                    <Button
+                      key={option}
+                      variant={formData.comfortableOnCamera === (option === 'Oui') ? 'default' : 'outline'}
+                      onClick={() => setFormData((prev) => ({ ...prev, comfortableOnCamera: option === 'Oui' }))}
+                      className="flex-1"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentStep === 5 && (
+              <div className="space-y-4">
+                <Label>Quelle est votre plus grande difficulté en anglais ?</Label>
+                <textarea
+                  id="difficulty"
+                  placeholder="Exemple: parler naturellement avec les passagers ou gérer les procédures de sécurité..."
+                  value={formData.biggestDifficulty}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, biggestDifficulty: e.target.value }))}
+                  className="w-full p-2 border border-border rounded-md"
+                  rows={3}
+                />
+              </div>
+            )}
+
+            {currentStep === 6 && (
+              <div className="space-y-4">
                 <Label>Sélectionnez vos axes d'amélioration :</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {challengeOptions.map((challenge) => (
@@ -249,7 +312,7 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {currentStep === 4 && (
+            {currentStep === 7 && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="airportCode">Code aéroport (ex: CDG, ORY)</Label>

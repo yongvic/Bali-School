@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "regenerate:modules": "node scripts/regenerate-modules-all.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.27.0",

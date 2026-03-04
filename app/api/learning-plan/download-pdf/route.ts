@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { generatePlanPDF, createPlanHTML } from '@/lib/pdf-generator';
+import { generatePlanPDF, generateFallbackPlanPDF, createPlanHTML, type PlanPDFData } from '@/lib/pdf-generator';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -39,39 +39,46 @@ export async function GET(_req: Request) {
     }
 
     // Transform modules for PDF
-    const weeks = plan.modules.map(module => ({
-      week: module.week,
-      title: module.title,
-      focus: [
-        'Apprendre le vocabulaire et les phrases clés',
-        'Travailler la prononciation',
-        'Réaliser les exercices interactifs',
-        'Gagner des points Kiki',
-      ],
-      targetPoints: module.targetPoints,
-    }));
-
-    // Generate HTML
-    const htmlContent = createPlanHTML({
+    const planData: PlanPDFData = {
       name: session.user.name,
       level: onboarding?.englishLevel || 'Non défini',
       airport: onboarding?.airportName || onboarding?.airportCode || 'Non défini',
       professionGoal: onboarding?.professionGoal || 'Objectif professionnel à définir',
       dailyMinutes: onboarding?.dailyMinutes || 30,
       weeklyGoal: onboarding?.weeklyGoal || 5,
-      weeks,
-    });
+      weeks: plan.modules.map(module => ({
+        week: module.week,
+        title: module.title,
+        focus: [
+          'Apprendre le vocabulaire et les phrases clés',
+          'Travailler la prononciation',
+          'Réaliser les exercices interactifs',
+          'Gagner des points Kiki',
+        ],
+        targetPoints: module.targetPoints,
+      })),
+    };
 
-    // Generate PDF
-    const pdf = await generatePlanPDF(htmlContent);
+    const htmlContent = createPlanHTML(planData);
 
-    // Return PDF
-    return new Response(pdf, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="learning-plan.pdf"',
-      },
-    });
+    try {
+      const pdf = await generatePlanPDF(htmlContent);
+      return new Response(pdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="learning-plan.pdf"',
+        },
+      });
+    } catch (pdfError) {
+      console.error('PDF generation failed, using fallback:', pdfError);
+      const fallbackPdf = generateFallbackPlanPDF(planData);
+      return new Response(fallbackPdf, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="learning-plan.pdf"',
+        },
+      });
+    }
   } catch (error) {
     console.error('PDF generation error:', error);
     return Response.json(

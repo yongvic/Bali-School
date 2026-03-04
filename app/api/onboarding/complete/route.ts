@@ -12,6 +12,9 @@ const onboardingSchema = z.object({
   airportName: z.string().min(1),
   challenges: z.array(z.string()),
   motivation: z.string().min(10),
+  readyInWeeks: z.string().transform(Number).pipe(z.number().min(4).max(52)),
+  comfortableOnCamera: z.boolean(),
+  biggestDifficulty: z.string().min(8),
 });
 
 export async function POST(req: Request) {
@@ -41,6 +44,9 @@ export async function POST(req: Request) {
         airportName: data.airportName,
         challenges: data.challenges,
         motivation: data.motivation,
+        readyInWeeks: data.readyInWeeks,
+        comfortableOnCamera: data.comfortableOnCamera,
+        biggestDifficulty: data.biggestDifficulty,
       },
       update: {
         professionGoal: data.professionGoal,
@@ -51,6 +57,9 @@ export async function POST(req: Request) {
         airportName: data.airportName,
         challenges: data.challenges,
         motivation: data.motivation,
+        readyInWeeks: data.readyInWeeks,
+        comfortableOnCamera: data.comfortableOnCamera,
+        biggestDifficulty: data.biggestDifficulty,
       },
     });
 
@@ -83,17 +92,30 @@ export async function POST(req: Request) {
 async function generateLearningPlan(userId: string, data: z.infer<typeof onboardingSchema>, currentUserId: string) {
   // Create learning plan with week-by-week focus
   const weeklyFocuses = generateWeeklyFocus(data);
+  const planDetails = buildPlanDetails(data, weeklyFocuses);
 
   const plan = await prisma.learningPlan.upsert({
     where: { userId },
     create: {
       userId,
       weeklyFocus: weeklyFocuses,
-      estimatedCompletion: new Date(Date.now() + 12 * 7 * 24 * 60 * 60 * 1000), // 12 weeks
+      weeklyObjectives: planDetails.weeklyObjectives,
+      goals30: planDetails.goals30,
+      goals60: planDetails.goals60,
+      goals90: planDetails.goals90,
+      skillFocuses: planDetails.skillFocuses,
+      exerciseSuggestions: planDetails.exerciseSuggestions,
+      estimatedCompletion: new Date(Date.now() + data.readyInWeeks * 7 * 24 * 60 * 60 * 1000),
     },
     update: {
       weeklyFocus: weeklyFocuses,
-      estimatedCompletion: new Date(Date.now() + 12 * 7 * 24 * 60 * 60 * 1000),
+      weeklyObjectives: planDetails.weeklyObjectives,
+      goals30: planDetails.goals30,
+      goals60: planDetails.goals60,
+      goals90: planDetails.goals90,
+      skillFocuses: planDetails.skillFocuses,
+      exerciseSuggestions: planDetails.exerciseSuggestions,
+      estimatedCompletion: new Date(Date.now() + data.readyInWeeks * 7 * 24 * 60 * 60 * 1000),
     },
   });
 
@@ -112,102 +134,160 @@ async function generateLearningPlan(userId: string, data: z.infer<typeof onboard
 }
 
 function generateWeeklyFocus(data: z.infer<typeof onboardingSchema>): string[] {
-  const baseModules: string[] = [
-    'A1 Foundations: Greetings & Seat Guidance',
-    'A1 Foundations: Basic Passenger Requests',
-    'A2 Cabin Service: Food, Beverage, Polite Requests',
-    'A2 Cabin Service: Clarification and Directions',
-    'B1 Operations: In-flight Announcements',
-    'B1 Operations: Listening and Passenger Assistance',
-    'B1 Operations: Lost Passenger & Re-routing',
-    'B2 Professional: Conflict and Complaint Handling',
-    'B2 Professional: Interview Company Readiness',
-    'B2 Professional: Urgence and Safety Precision',
-    'C1 Performance: Secret Challenge Scenarios',
-    'C1 Performance: Capstone Video Assessment',
+  const focusThemes = [
+    'Structured Foundations & Greetings',
+    'Listening & Passenger Requests',
+    'Customer Service Fluency',
+    'Pronunciation & Confidence',
+    'Safety Announcements & Clarity',
+    'Emergency Readiness & Scripts',
+    'Interview Preparation & Stories',
+    'Accent Neutralization',
+    'Advanced Passenger Scenarios',
+    'Role Play & Soft Skills',
+    'Review & Consolidation',
+    'Performance & Capstone',
   ];
 
-  // Adjust based on level
-  if (data.englishLevel === 'A1' || data.englishLevel === 'A2') {
-    return [
-      'Alphabet & Numbers',
-      'Common Words',
-      'Basic Greetings',
-      'Simple Questions',
-      'Food & Beverages',
-      'Toilets & Comfort Items',
-      'Safety Basics',
-      'Common Phrases',
-      'Listening Practice',
-      'Speaking Confidence',
-      'Review & Practice',
-      'Final Assessment',
-    ];
-  }
+  const personalizedGap = data.biggestDifficulty ? `Focus sur "${data.biggestDifficulty}"` : 'Focus sur les priorités identifiées';
+  const goals = [...focusThemes];
+  goals[2] = `${goals[2]} – ${data.challenges[0] || data.professionGoal}`;
+  goals[3] = `${goals[3]} – ${data.comfortableOnCamera ? 'exercices caméras' : 'micro et audio'}`;
+  goals[4] = `${goals[4]} • Être prête dans ${data.readyInWeeks} semaines`;
+  goals[5] = personalizedGap;
+  return goals;
+}
 
-  return baseModules;
+function buildPlanDetails(
+  data: z.infer<typeof onboardingSchema>,
+  weeklyFocuses: string[]
+): {
+  weeklyObjectives: string[];
+  goals30: string[];
+  goals60: string[];
+  goals90: string[];
+  skillFocuses: string[];
+  exerciseSuggestions: string[];
+} {
+  const weeklyObjectives = weeklyFocuses.map((focus, index) => {
+    return `Semaine ${index + 1} · ${focus.replace(/&/g, 'et')}`;
+  });
+
+  const cameraGoal = data.comfortableOnCamera
+    ? 'Préparer des vidéos de feedback régulières pour gagner en aisance devant la caméra.'
+    : 'Commencer par des enregistrements audio puis faire une transition vers la caméra.';
+
+  const goals30 = [
+    `30 jours – Consolider les bases, améliorer ${data.biggestDifficulty} et valider les routines quotidiennes.`,
+    `30 jours – Accent sur les expressions passagers et ${data.challenges[0] || 'les fondamentaux'} pour gagner en fluidité.`,
+    cameraGoal,
+  ];
+
+  const goals60 = [
+    `60 jours – Renforcer les scripts complexes et les réponses spontanées (mise en situation cabine).`,
+    `60 jours – Approfondir les skills listés : ${data.challenges.slice(0, 3).join(', ') || 'communication professionnelle'}.`,
+    `60 jours – Commencer les simulations filmées (feedback + révision) et suivre la préparation vers ${data.professionGoal}.`,
+  ];
+
+  const goals90 = [
+    `90 jours – Finaliser les routines, maîtriser la vidéo capstone et se sentir prête ${data.readyInWeeks} semaines après.`,
+    `90 jours – Réponses claires sur les situations complexes (${data.biggestDifficulty}).`,
+    `90 jours – Valider les 3 piliers : service passager, sécurité et confiance en soi.`,
+  ];
+
+  const skillFocuses = [
+    ...new Set([
+      'Prononciation & Intonation',
+      'Fluidité expression orale',
+      ...data.challenges.slice(0, 4),
+      data.biggestDifficulty,
+    ]),
+  ].filter(Boolean);
+
+  const exerciseSuggestions = [
+    data.comfortableOnCamera
+      ? 'Production vidéo hebdomadaire avec scénarios cabine'
+      : 'Enregistrements audio guidés puis playback avec auto-feedback',
+    'Scénarios de service client (annonces, guidages, réclamations)',
+    'Micro-sessions de questions spontanées pour renforcer la confiance',
+  ];
+
+  return { weeklyObjectives, goals30, goals60, goals90, skillFocuses, exerciseSuggestions };
 }
 
 async function createModules(planId: string, englishLevel: string, userId: string) {
   const normalizedLevel = normalizeCefrLevel(englishLevel);
   const levelPointTarget = normalizedLevel.startsWith('A') ? 220 : normalizedLevel.startsWith('B') ? 280 : 340;
-  const modeRotation: Array<{
-    mode: any;
-    title: string;
-    description: string;
-    points: number;
-    topic: string;
-  }> = [
-    { mode: 'PASSENGER', title: 'Passenger Mode', description: 'Passenger requests in context.', points: 60, topic: 'passenger service' },
-    { mode: 'ACCENT_TRAINING', title: 'Accent Training Mode', description: 'Pronunciation and rhythm refinement.', points: 65, topic: 'pronunciation' },
-    { mode: 'SECRET_CHALLENGE', title: 'Secret Challenge Mode', description: 'Unexpected scenario response.', points: 75, topic: 'unexpected service events' },
-    { mode: 'WHEEL_OF_ENGLISH', title: 'Wheel of English', description: 'Random topic with timed speaking.', points: 60, topic: 'fluency and reaction' },
-    { mode: 'LOVE_AND_ENGLISH', title: 'Love & English Mode', description: 'Warm and premium customer language.', points: 55, topic: 'empathy and tone' },
-    { mode: 'EMERGENCY', title: 'Mode Urgence', description: 'Critical safety communication.', points: 80, topic: 'emergency communication' },
-    { mode: 'INTERVIEW_COMPANY', title: 'Mode Interview Compagnie', description: 'Interview readiness drills.', points: 70, topic: 'airline interview communication' },
-    { mode: 'LOST_PASSENGER', title: 'Lost Passenger Mode', description: 'Helping disoriented passengers.', points: 65, topic: 'airport guidance' },
+  const topics = [
+    'passenger service',
+    'accent clarity',
+    'unexpected situations',
+    'professional communication',
+    'safety and urgency',
+    'interview preparation',
+    'lost passenger assistance',
   ];
 
   for (let week = 1; week <= 12; week++) {
     const cefrLevel = levelByWeek(week);
+    const topic = topics[(week - 1) % topics.length];
+    const blueprint = createModuleBlueprint(cefrLevel, topic);
     const module = await prisma.module.create({
       data: {
         planId,
         week,
         title: `Semaine ${week} - Niveau ${cefrLevel}`,
-        description: `Module ${cefrLevel} centré sur les compétences écoute, vocabulaire, grammaire et production orale.`,
+        description: `Module ${cefrLevel} structuré: découverte, pratique contrôlée, semi-guidée, oral final et évaluation.`,
         targetPoints: levelPointTarget,
       },
     });
 
-    const picks = [
-      modeRotation[(week - 1) % modeRotation.length],
-      modeRotation[week % modeRotation.length],
-    ];
-
-    // Add a mandatory end-of-module video exercise for oral validation.
-    picks.push({
-      mode: 'ROLE_PLAY',
-      title: 'Soumission orale de fin de module',
-      description: 'Vidéo finale obligatoire pour valider le module et le niveau.',
-      points: 90,
-      topic: 'final oral assessment',
-    });
-
-    for (const template of picks) {
-      const blueprint = createModuleBlueprint(cefrLevel, template.topic);
+    let orderIndex = 1;
+    for (const ex of blueprint.exercises) {
       await prisma.exercise.create({
         data: {
           userId,
           moduleId: module.id,
-          mode: template.mode,
-          title: template.title,
-          description: template.description,
-          content: JSON.stringify(blueprint),
-          pointsValue: template.points,
+          mode: ex.exerciseType === 'speaking' ? 'ROLE_PLAY' : 'CUSTOM',
+          exerciseType: mapExerciseType(ex.exerciseType),
+          skill: ex.skill || 'READING',
+          phase: ex.phase || 'PRACTICE_CONTROLLED',
+          orderIndex,
+          title:
+            ex.exerciseType === 'speaking'
+              ? 'Production orale de fin de module'
+              : `${(ex.exerciseType || 'multiple_choice').replace('_', ' ')} - ${topic}`,
+          description: ex.explanation || `Exercice ${ex.exerciseType || 'multiple_choice'} pour ${topic}`,
+          content: JSON.stringify({
+            ...blueprint,
+            currentExercise: ex,
+          }),
+          pointsValue: ex.phase === 'ORAL_PRODUCTION' ? 20 : ex.phase === 'FINAL_EVALUATION' ? 5 : 10,
         },
       });
+      orderIndex += 1;
     }
+  }
+}
+
+function mapExerciseType(type?: string) {
+  switch (type) {
+    case 'multiple_choice':
+      return 'MULTIPLE_CHOICE' as const;
+    case 'fill_blank':
+      return 'FILL_BLANK' as const;
+    case 'drag_drop':
+      return 'DRAG_DROP' as const;
+    case 'matching':
+      return 'MATCHING' as const;
+    case 'listening':
+      return 'LISTENING' as const;
+    case 'writing':
+      return 'WRITING' as const;
+    case 'speaking':
+      return 'SPEAKING' as const;
+    default:
+      return 'MULTIPLE_CHOICE' as const;
   }
 }
 

@@ -20,10 +20,14 @@ interface Module {
   exercises: {
     id: string;
     mode: string;
+    exerciseType: string;
+    skill: string;
+    phase: string;
     title: string;
     description: string;
     pointsValue: number;
     completed: boolean;
+    achievedScore: number;
     content?: string;
   }[];
 }
@@ -280,7 +284,7 @@ export default function ModulePage() {
                 moduleId={moduleId}
                 mode={exercise.mode}
                 title={exercise.title}
-                description={exercise.description}
+                description={`${exercise.description} • ${exercise.skill} • ${exercise.exerciseType}`}
                 pointsValue={exercise.pointsValue}
                 completed={exercise.completed}
               />

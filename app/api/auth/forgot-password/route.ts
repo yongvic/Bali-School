@@ -52,9 +52,27 @@ export async function POST(req: Request) {
     const resetUrl = `${appUrl}/auth/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
 
     try {
-      await sendPasswordResetEmail({ to: email, resetUrl });
+      const mailResult = await sendPasswordResetEmail({ to: email, resetUrl });
+      if (!mailResult.delivered && process.env.NODE_ENV !== 'production') {
+        return Response.json(
+          {
+            message: 'Email provider non configuré. Utilisez le lien de réinitialisation ci-dessous en développement.',
+            resetUrl,
+          },
+          { status: 200 }
+        );
+      }
     } catch (mailError) {
       console.error('Password reset email error:', mailError);
+      if (process.env.NODE_ENV !== 'production') {
+        return Response.json(
+          {
+            message: "Échec d'envoi email. Lien de secours généré en développement.",
+            resetUrl,
+          },
+          { status: 200 }
+        );
+      }
     }
 
     return genericResponse;

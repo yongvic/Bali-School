@@ -1,21 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, Loader2, Users, Video, MessageSquare, CheckCircle2, ChartColumnIncreasing } from 'lucide-react';
-
-interface VideoSubmission {
-  id: string;
-  userId: string;
-  userName: string;
-  status: 'pending' | 'approved' | 'rejected' | 'revision_needed';
-  submittedAt: string;
-  videoUrl: string;
-  exerciseTitle: string;
-}
+import { Loader2, AlertCircle, Video, Users, Sparkles, BookOpen } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AdminStats {
   totalStudents: number;
@@ -24,327 +16,297 @@ interface AdminStats {
   averageCompletionRate: number;
 }
 
+interface VideoSubmission {
+  id: string;
+  userName: string;
+  exerciseTitle: string;
+  submittedAt: string;
+  status: 'pending' | 'approved' | 'rejected' | 'revision_needed';
+  videoUrl: string;
+}
+
+interface StudentSummary {
+  id: string;
+  name: string;
+  email: string;
+  exercisesCompleted: number;
+  videosSubmitted: number;
+}
+
 export default function AdminPage() {
   const sessionState = useSession();
   const session = sessionState?.data;
   const status = sessionState?.status ?? 'loading';
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [videos, setVideos] = useState<VideoSubmission[]>([]);
+  const [students, setStudents] = useState<StudentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedVideo, setSelectedVideo] = useState<VideoSubmission | null>(null);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-
-  if (status === 'unauthenticated') {
-    redirect('/auth/signin');
-  }
 
   useEffect(() => {
-    const checkAdminAndFetch = async () => {
-      if (session?.user?.role !== 'ADMIN') {
-        redirect('/dashboard');
-        return;
-      }
-
+    const fetchAdminData = async () => {
       try {
-        const [statsRes, videosRes] = await Promise.all([
+        const [statsRes, videosRes, studentsRes] = await Promise.all([
           fetch('/api/admin/stats'),
           fetch('/api/admin/videos'),
+          fetch('/api/admin/students'),
         ]);
 
-        if (!statsRes.ok || !videosRes.ok) {
-          throw new Error('Échec de chargement des données admin');
+        if (!statsRes.ok || !videosRes.ok || !studentsRes.ok) {
+          throw new Error('Impossible de charger les données administrateur');
         }
 
-        const statsData = await statsRes.json();
-        const videosData = await videosRes.json();
+        const [statsData, videosData, studentsData] = await Promise.all([
+          statsRes.json(),
+          videosRes.json(),
+          studentsRes.json(),
+        ]);
 
         setStats(statsData);
         setVideos(videosData);
+        setStudents(studentsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+        toast.error('Impossible de charger la page admin');
       } finally {
         setLoading(false);
       }
     };
 
-    if (session?.user?.id) {
-      checkAdminAndFetch();
+    if (session?.user?.role === 'ADMIN') {
+      fetchAdminData();
     }
-  }, [session?.user?.id, session?.user?.role]);
+  }, [session?.user?.role]);
 
-  const handleVideoAction = async (videoId: string, action: 'approve' | 'reject') => {
-    setIsSubmittingFeedback(true);
-    try {
-      const response = await fetch(`/api/admin/videos/${videoId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-          feedback: feedbackText,
-        }),
-      });
+  if (status === 'unauthenticated') {
+    redirect('/auth/signin');
+  }
 
-      if (!response.ok) throw new Error('Échec de mise à jour vidéo');
+  if (!session?.user) {
+    return null;
+  }
 
-      // Refresh videos
-      const videosRes = await fetch('/api/admin/videos');
-      const videosData = await videosRes.json();
-      setVideos(videosData);
-      setSelectedVideo(null);
-      setFeedbackText('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Échec de mise à jour vidéo');
-    } finally {
-      setIsSubmittingFeedback(false);
-    }
-  };
+  if (session.user.role !== 'ADMIN') {
+    redirect('/dashboard');
+  }
 
-  if (status === 'loading' || loading) {
+  const pendingVideos = useMemo(
+    () => videos.filter((video) => video.status === 'pending'),
+    [videos]
+  );
+
+  const topStudents = useMemo(() => [...students].sort((a, b) => b.exercisesCompleted - a.exercisesCompleted).slice(0, 6), [students]);
+
+  const statsTiles = [
+    {
+      label: 'Élèves actifs',
+      value: stats?.totalStudents ?? 0,
+      icon: Users,
+      badge: `${students.length} inscrits`,
+    },
+    {
+      label: 'Vidéos en attente',
+      value: stats?.pendingVideos ?? pendingVideos.length,
+      icon: Video,
+      badge: 'À revoir',
+    },
+    {
+      label: 'Vidéos revues',
+      value: stats?.totalVideosReviewed ?? 0,
+      icon: Sparkles,
+      badge: 'Feedback envoyé',
+    },
+    {
+      label: 'Progression moyenne',
+      value: `${Math.round(stats?.averageCompletionRate ?? 0)}%`,
+      icon: BookOpen,
+      badge: 'Global',
+    },
+  ];
+
+  if (loading || status === 'loading') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="text-muted-foreground">Chargement du tableau admin...</p>
         </div>
       </div>
     );
   }
 
-  if (session?.user?.role !== 'ADMIN') {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-      {/* Header */}
-      <div className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">Tableau de bord admin</h1>
-          <p className="text-muted-foreground mt-1">Gérez les soumissions élèves et suivez la progression</p>
+    <div className="space-y-10">
+      {error && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-3">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error}</span>
         </div>
-      </div>
+      )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {error && (
-          <div className="flex gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/30">
-            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-destructive">{error}</p>
-          </div>
-        )}
+      <section className="space-y-4">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs uppercase tracking-[0.5em] text-slate-400">Synthèse</p>
+          <h2 className="text-3xl font-semibold">Tout le pilotage au même endroit</h2>
+        </div>
+        <p className="text-sm text-slate-300 max-w-3xl">
+          Suivez les soumissions, donnez vos verdicts et accompagnez les élèves. La navigation à gauche vous permet
+          d&apos;atteindre les sections clés en un clic.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link href="#pending">
+            <Button size="sm">Voir les vidéos en attente</Button>
+          </Link>
+          <Link href="#students">
+            <Button variant="outline" size="sm">
+              Accéder aux élèves
+            </Button>
+          </Link>
+          <Link href="#content">
+            <Button variant="ghost" size="sm">
+              Gérer le contenu
+            </Button>
+          </Link>
+        </div>
+      </section>
 
-        {/* Stats Grid */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  Total élèves
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{stats.totalStudents}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Video className="w-4 h-4 text-orange-500" />
-                  Vidéos en attente
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-orange-500">{stats.pendingVideos}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  Vidéos revues
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold text-green-500">{stats.totalVideosReviewed}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <ChartColumnIncreasing className="w-4 h-4" /> Progression moyenne
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{Math.round(stats.averageCompletionRate)}%</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Video Review Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Pending Videos List */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <CardHeader>
-                <CardTitle>Vidéos en attente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {videos.filter(v => v.status === 'pending').length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Aucune vidéo en attente
-                    </p>
-                  ) : (
-                    videos
-                      .filter(v => v.status === 'pending')
-                      .map(video => (
-                        <button
-                          key={video.id}
-                          onClick={() => setSelectedVideo(video)}
-                          className={`w-full text-left p-3 rounded-lg transition-colors ${
-                            selectedVideo?.id === video.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-muted'
-                          }`}
-                        >
-                          <p className="text-sm font-semibold line-clamp-1">{video.exerciseTitle}</p>
-                          <p className="text-xs opacity-75">{video.userName}</p>
-                          <p className="text-xs opacity-75">
-                            {new Date(video.submittedAt).toLocaleDateString()}
-                          </p>
-                        </button>
-                      ))
-                  )}
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {statsTiles.map((tile) => {
+          const TileIcon = tile.icon;
+          return (
+            <Card key={tile.label} className="bg-slate-900 border-slate-800 shadow-sm">
+              <CardHeader className="flex items-center justify-between gap-4 pb-2">
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <TileIcon className="h-4 w-4 text-cyan-400" />
+                  <span>{tile.label}</span>
                 </div>
+                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">{tile.badge}</span>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-semibold text-white">{tile.value}</p>
               </CardContent>
             </Card>
+          );
+        })}
+      </section>
+
+      <section id="pending" className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Vidéos</p>
+            <h3 className="text-2xl font-semibold">Soumissions en attente ({pendingVideos.length})</h3>
           </div>
+          <Link href="#pending">
+            <Button size="sm" variant="ghost" className="gap-2">
+              <Video className="h-4 w-4" />
+              Actualiser
+            </Button>
+          </Link>
+        </div>
 
-          {/* Video Review Panel */}
-          <div className="lg:col-span-2">
-            {selectedVideo ? (
-              <Card>
+        {pendingVideos.length === 0 ? (
+          <Card className="bg-slate-900 border-slate-800">
+            <CardContent className="py-10 text-center">
+              <p className="text-sm text-slate-400">Aucune vidéo à revoir pour l&apos;instant.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingVideos.slice(0, 6).map((video) => (
+              <Card key={video.id} className="border-slate-800 shadow-sm">
                 <CardHeader>
-                  <CardTitle>{selectedVideo.exerciseTitle}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Soumise par : {selectedVideo.userName}
-                  </p>
+                  <div className="text-sm text-slate-400">Soumise par {video.userName}</div>
+                  <CardTitle className="text-lg">{video.exerciseTitle}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Video Player */}
-                  <div className="w-full bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center">
-                    <div className="text-center">
-                      <Video className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">Lecteur vidéo</p>
-                      <p className="text-xs text-muted-foreground mt-1">{selectedVideo.videoUrl}</p>
-                    </div>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-slate-500">
+                    Soumise le {new Date(video.submittedAt).toLocaleString()}
+                  </p>
+                  <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                    <span className="rounded-full border border-slate-700 px-2 py-1">Status: En attente</span>
+                    <span className="rounded-full border border-slate-700 px-2 py-1">Vidéo</span>
                   </div>
-
-                  {/* Feedback Form */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Votre feedback</label>
-                      <textarea
-                        value={feedbackText}
-                        onChange={(e) => setFeedbackText(e.target.value)}
-                        placeholder="Donnez un feedback structuré pour l'élève..."
-                        className="w-full p-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition"
-                        rows={4}
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleVideoAction(selectedVideo.id, 'reject')}
-                        disabled={isSubmittingFeedback}
-                        className="flex-1"
-                      >
-                        Refuser
-                      </Button>
-                      <Button
-                        onClick={() => handleVideoAction(selectedVideo.id, 'approve')}
-                        disabled={isSubmittingFeedback}
-                        className="flex-1"
-                      >
-                        {isSubmittingFeedback ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Validation...
-                          </>
-                        ) : (
-                          'Valider'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                  <Link href={`/admin/review/${video.id}`}>
+                    <Button className="w-full">
+                      <span>Revoir la vidéo</span> →
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
-            ) : (
-              <Card className="flex items-center justify-center min-h-96">
-                <div className="text-center">
-                  <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">Sélectionnez une vidéo à revoir</p>
-                </div>
-              </Card>
-            )}
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section id="students" className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Élèves</p>
+            <h3 className="text-2xl font-semibold">Suivi des apprenants</h3>
           </div>
         </div>
 
-        {/* All Videos Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Toutes les soumissions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4">Élève</th>
-                    <th className="text-left py-3 px-4">Exercice</th>
-                    <th className="text-left py-3 px-4">Date de soumission</th>
-                    <th className="text-left py-3 px-4">Statut</th>
+        <Card className="border-slate-800">
+          <CardContent className="overflow-x-auto">
+            <table className="min-w-full text-sm text-left">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-500">
+                  <th className="py-3 px-4">Nom</th>
+                  <th className="py-3 px-4">Email</th>
+                  <th className="py-3 px-4">Exercices validés</th>
+                  <th className="py-3 px-4">Vidéos soumises</th>
+                  <th className="py-3 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.id} className="border-b border-slate-800 hover:bg-slate-900">
+                    <td className="py-3 px-4 font-medium text-white">{student.name}</td>
+                    <td className="py-3 px-4 text-slate-400">{student.email}</td>
+                    <td className="py-3 px-4">{student.exercisesCompleted}</td>
+                    <td className="py-3 px-4">{student.videosSubmitted}</td>
+                    <td className="py-3 px-4">
+                      <Link href={`/admin/students/${student.id}`}>
+                        <Button variant="outline" size="sm">
+                          Voir le profil
+                        </Button>
+                      </Link>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {videos.map(video => (
-                    <tr key={video.id} className="border-b border-border hover:bg-muted/50">
-                      <td className="py-3 px-4">{video.userName}</td>
-                      <td className="py-3 px-4">{video.exerciseTitle}</td>
-                      <td className="py-3 px-4">
-                        {new Date(video.submittedAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          video.status === 'pending'
-                            ? 'bg-orange-500/10 text-orange-700 dark:text-orange-400'
-                            : video.status === 'approved'
-                            ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                            : 'bg-red-500/10 text-red-700 dark:text-red-400'
-                        }`}>
-                          {video.status === 'revision_needed'
-                            ? 'Révision demandée'
-                            : video.status.charAt(0).toUpperCase() + video.status.slice(1)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
-      </main>
+      </section>
+
+      <section id="content" className="space-y-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Contenu</p>
+            <h3 className="text-2xl font-semibold">Actions de gestion</h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" size="sm">
+              Ajouter un exercice
+            </Button>
+            <Button variant="outline" size="sm">
+              Modifier modules
+            </Button>
+            <Button variant="outline" size="sm">
+              Configurer les badges
+            </Button>
+          </div>
+        </div>
+        <Card className="border-dashed border-slate-800 bg-slate-900/60">
+          <CardContent className="text-sm text-slate-400">
+            <p>
+              Toutes ces actions ouvriront une interface dédiée une fois que les API de contenu seront disponibles.
+              Pour l&apos;instant, vous pouvez utiliser les données ci-dessus pour piloter les révisions et les points.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }
-
