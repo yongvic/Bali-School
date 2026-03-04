@@ -69,6 +69,11 @@ export default function LearnPage() {
             <CardContent>
               <p className="text-base font-semibold">{modules.weeklyFocus}</p>
               <p className="text-sm text-muted-foreground mt-2">Objectif recommandé: 300 points Kiki minimum</p>
+              {modules.recommendedModuleId && (
+                <Button asChild size="sm" className="mt-3">
+                  <Link href={`/learning/module/${modules.recommendedModuleId}`}>Continuer le module recommandé</Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

@@ -1,96 +1,49 @@
 # Ravi's
 
-> Plateforme francaise d'apprentissage de l'anglais professionnel pour le personnel cabine.
+Ravi's est une plateforme d'apprentissage de l'anglais (UI en français, contenus pédagogiques en anglais), orientée CEFR et scénarios métiers aéronautiques.
 
-## Presentation
+## Installation
 
-Ravi's est une application web full-stack pour entrainer l'anglais aeronautique avec un parcours pedagogique gamifie.
-
-Fonctionnalites principales:
-- Modes d'exercices (passager, accent, urgence, role-play, ecoute, quiz, vocabulaire, speaking, simulation cabine, etc.)
-- Points Kiki, badges, progression hebdomadaire
-- Upload video et revue admin
-- Wizard onboarding et plan personnalise 30/60/90 jours
-- Export PDF du plan
-
-## Stack
-
-- Next.js (App Router)
-- TypeScript
-- Auth.js / NextAuth
-- Prisma + Neon (PostgreSQL)
-- Cloudinary / Vercel Blob (selon integration)
-- Puppeteer
-- Tailwind + shadcn/ui
-
-## Demarrage rapide
-
-Voir [QUICKSTART.md](./QUICKSTART.md).
-
-Commandes essentielles:
 ```bash
 npm install
-cp .env.example .env
-npx prisma db push
+```
+
+Configurer `.env.local` (ou `.env`) puis générer Prisma:
+
+```bash
+npx prisma generate
+```
+
+## Exécution
+
+```bash
 npm run dev
 ```
 
-## Variables d'environnement
+Build production:
 
-| Variable | Requise | Description |
-|---|---|---|
-| `DATABASE_URL` | Oui | Chaine de connexion PostgreSQL/Neon |
-| `AUTH_SECRET` | Oui | Secret de signature |
-| `NEXTAUTH_URL` | Oui | URL de l'app |
-| `BLOB_READ_WRITE_TOKEN` | Oui (upload video) | Token stockage blob |
-| `RESEND_API_KEY` | Optionnelle | Envoi emails systeme |
-
-## API (resume)
-
-Public:
-- `POST /api/auth/register`
-- `POST /api/auth/[...nextauth]`
-
-Utilisateur connecte:
-- `GET /api/user/stats`
-- `GET /api/user/progress`
-- `GET /api/exercises`
-- `POST /api/exercises/complete`
-- `POST /api/videos/upload`
-- `GET /api/gamification`
-
-Admin:
-- `GET /api/admin/stats`
-- `GET /api/admin/videos`
-- `GET /api/admin/videos/[id]`
-- `PATCH /api/admin/videos/[id]`
-- `GET /api/admin/students`
-
-## Securite
-
-- Hash des mots de passe (bcrypt)
-- Sessions JWT via Auth.js
-- Protection des routes par authentification et role
-- Validation d'entrees cote serveur
-- Prisma pour limiter les risques d'injection SQL
-
-## Base de donnees
-
-Schema Prisma principal:
-- `User`, `Onboarding`, `LearningPlan`, `Module`, `Exercise`, `Video`, `AdminFeedback`, `KikiPoints`, `Badge`, `Wish`, `AirportMap`
-
-Commandes utiles:
 ```bash
-npx prisma db push
-npx prisma generate
-npx prisma studio
+npm run build
+npm run start
 ```
 
-## Notes projet
+## Fonctionnalités clés
 
-- Nom officiel: `Ravi's`
-- Interface: francais
-- Contenus pedagogiques d'exercices: anglais
+- Progression CEFR A1 -> C1 avec déblocage conditionné à la validation complète du module.
+- Modules structurés: introduction, vocabulaire, grammaire, compréhension orale, exercices interactifs.
+- Production orale: micro, transcription, score, feedback immédiat.
+- Soumission vidéo de fin de module: caméra directe ou galerie.
+- Carte aéroport interactive de progression.
+- Plan d'apprentissage persistant et modifiable sans refaire l'onboarding.
+- Souhaits débloqués uniquement après objectif hebdomadaire atteint.
 
-Derniere mise a jour: mars 2026
+## Scripts utiles
 
+- `npm run dev`
+- `npm run build`
+- `npm run start`
+- `npx prisma generate`
+
+## Documentation
+
+Voir `PRODUCT_SPEC.md` pour le résumé technique et fonctionnel consolidé.

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,23 +28,23 @@ interface OnboardingData {
 }
 
 const ENGLISH_LEVELS = [
-  { value: 'A1', label: 'A1 - Beginner' },
-  { value: 'A2', label: 'A2 - Elementary' },
-  { value: 'B1', label: 'B1 - Intermediate' },
-  { value: 'B2', label: 'B2 - Upper Intermediate' },
-  { value: 'C1', label: 'C1 - Advanced' },
-  { value: 'C2', label: 'C2 - Mastery' },
+  { value: 'A1', label: 'A1 - Débutant' },
+  { value: 'A2', label: 'A2 - Élémentaire' },
+  { value: 'B1', label: 'B1 - Intermédiaire' },
+  { value: 'B2', label: 'B2 - Intermédiaire avancé' },
+  { value: 'C1', label: 'C1 - Avancé' },
+  { value: 'C2', label: 'C2 - Maîtrise' },
 ];
 
 const CHALLENGE_OPTIONS = [
-  'Pronunciation',
-  'Listening Comprehension',
-  'Vocabulary',
-  'Grammar',
-  'Confidence Speaking',
+  'Prononciation',
+  'Compréhension orale',
+  'Vocabulaire',
+  'Grammaire',
+  'Confiance à l’oral',
   'Accent',
   'Business English',
-  'Emergency Procedures',
+  'Procédures d’urgence',
 ];
 
 const AIRPORTS = [
@@ -103,7 +102,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   const handleSubmit = async () => {
     if (!data.motivation.trim()) {
-      toast.error('Please share your motivation');
+      toast.error('Veuillez indiquer votre motivation.');
       return;
     }
 
@@ -116,7 +115,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
       <div className="mb-8">
         <div className="flex justify-between mb-2">
           <span className="text-sm font-medium text-muted-foreground">
-            Step {currentIndex + 1} of {steps.length}
+            Étape {currentIndex + 1} sur {steps.length}
           </span>
           <span className="text-sm font-medium text-muted-foreground">{Math.round(progress)}%</span>
         </div>
@@ -132,32 +131,32 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         <CardHeader>
           {currentStep === 'profession' && (
             <>
-              <CardTitle>Your Professional Goal</CardTitle>
+              <CardTitle>Objectif professionnel</CardTitle>
             </>
           )}
           {currentStep === 'level' && (
             <>
-              <CardTitle>Your English Level</CardTitle>
+              <CardTitle>Niveau d&apos;anglais</CardTitle>
             </>
           )}
           {currentStep === 'availability' && (
             <>
-              <CardTitle>Your Availability</CardTitle>
+              <CardTitle>Disponibilité</CardTitle>
             </>
           )}
           {currentStep === 'airport' && (
             <>
-              <CardTitle>Your Home Airport</CardTitle>
+              <CardTitle>Aéroport principal</CardTitle>
             </>
           )}
           {currentStep === 'challenges' && (
             <>
-              <CardTitle>Learning Challenges</CardTitle>
+              <CardTitle>Défis d&apos;apprentissage</CardTitle>
             </>
           )}
           {currentStep === 'review' && (
             <>
-              <CardTitle>Review Your Profile</CardTitle>
+              <CardTitle>Récapitulatif du profil</CardTitle>
             </>
           )}
         </CardHeader>
@@ -166,16 +165,16 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {currentStep === 'profession' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>What's your professional goal?</Label>
+                <Label>Quel est votre objectif professionnel ?</Label>
                 <Input
                   value={data.professionGoal}
                   onChange={(e) => setData({ ...data, professionGoal: e.target.value })}
-                  placeholder="e.g., Become a flight attendant"
+                  placeholder="Ex: Devenir personnel navigant commercial"
                   className="text-base"
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Tell us what position or role you're aiming for in aviation.
+                Indiquez le poste visé dans l’aviation.
               </p>
             </div>
           )}
@@ -183,7 +182,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {currentStep === 'level' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>What's your current English level?</Label>
+                <Label>Quel est votre niveau actuel en anglais ?</Label>
                 <Select value={data.englishLevel} onValueChange={(value) => setData({ ...data, englishLevel: value })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -198,7 +197,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 </Select>
               </div>
               <p className="text-sm text-muted-foreground">
-                This helps us tailor exercises to your level.
+                Cette information adapte les modules à votre niveau.
               </p>
             </div>
           )}
@@ -206,7 +205,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {currentStep === 'availability' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>How many minutes can you dedicate daily?</Label>
+                <Label>Combien de minutes par jour pouvez-vous consacrer ?</Label>
                 <Input
                   type="number"
                   value={data.dailyMinutes}
@@ -218,7 +217,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Target hours per week</Label>
+                <Label>Heures visées par semaine</Label>
                 <Input
                   type="number"
                   value={data.weeklyGoal}
@@ -230,7 +229,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Your answers will shape your personalized 30/60/90 day plan.
+                Vos réponses servent à construire votre plan personnalisé.
               </p>
             </div>
           )}
@@ -238,7 +237,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           {currentStep === 'airport' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Which is your home airport?</Label>
+                <Label>Quel est votre aéroport principal ?</Label>
                 <Select value={data.airportCode} onValueChange={(value) => {
                   const selected = AIRPORTS.find(a => a.code === value);
                   if (selected) {
@@ -258,15 +257,15 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 </Select>
               </div>
               <p className="text-sm text-muted-foreground">
-                Your airport will be the starting point of your learning journey map.
+                Cet aéroport sert de point de départ dans votre carte de progression.
               </p>
             </div>
           )}
 
           {currentStep === 'challenges' && (
             <div className="space-y-4">
-              <Label>What are your main challenges? (Select all that apply)</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <Label>Quels sont vos principaux défis ? (plusieurs choix possibles)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {CHALLENGE_OPTIONS.map(challenge => (
                   <button
                     key={challenge}
@@ -282,7 +281,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 ))}
               </div>
               <p className="text-sm text-muted-foreground">
-                We'll focus on your pain points in the learning plan.
+                Le plan mettra l’accent sur ces difficultés.
               </p>
             </div>
           )}
@@ -291,29 +290,29 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             <div className="space-y-6">
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground">Professional Goal</p>
+                  <p className="text-sm text-muted-foreground">Objectif professionnel</p>
                   <p className="font-semibold text-lg">{data.professionGoal}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">English Level</p>
+                    <p className="text-sm text-muted-foreground">Niveau d&apos;anglais</p>
                     <p className="font-semibold text-lg">{data.englishLevel}</p>
                   </div>
                   <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Daily Commitment</p>
+                    <p className="text-sm text-muted-foreground">Engagement quotidien</p>
                     <p className="font-semibold text-lg">{data.dailyMinutes} min</p>
                   </div>
                   <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Weekly Goal</p>
+                    <p className="text-sm text-muted-foreground">Objectif hebdomadaire</p>
                     <p className="font-semibold text-lg">{data.weeklyGoal}h</p>
                   </div>
                   <div className="p-4 rounded-lg bg-muted">
-                    <p className="text-sm text-muted-foreground">Home Airport</p>
+                    <p className="text-sm text-muted-foreground">Aéroport principal</p>
                     <p className="font-semibold text-lg">{data.airportCode}</p>
                   </div>
                 </div>
                 <div className="p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground">Challenges</p>
+                  <p className="text-sm text-muted-foreground">Défis</p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {data.challenges.map(c => (
                       <span key={c} className="px-2 py-1 rounded bg-primary/20 text-primary text-sm font-medium">
@@ -325,12 +324,12 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="motivation">Why do you want to learn English?</Label>
+                <Label htmlFor="motivation">Pourquoi souhaitez-vous apprendre l’anglais ?</Label>
                 <textarea
                   id="motivation"
                   value={data.motivation}
                   onChange={(e) => setData({ ...data, motivation: e.target.value })}
-                  placeholder="Share your motivation..."
+                  placeholder="Décrivez votre motivation..."
                   className="w-full p-3 rounded-lg border border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition"
                   rows={4}
                 />
@@ -345,15 +344,15 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               onClick={handlePrev}
               disabled={currentIndex === 0}
             >
-              Previous
+              Retour
             </Button>
             {currentIndex === steps.length - 1 ? (
               <Button onClick={handleSubmit} className="flex-1">
-                Generate My Plan
+                Générer mon plan
               </Button>
             ) : (
               <Button onClick={handleNext} className="flex-1">
-                Next
+                Suivant
               </Button>
             )}
           </div>

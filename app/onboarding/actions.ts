@@ -19,10 +19,21 @@ export async function createOnboarding(data: unknown) {
   try {
     const validatedData = onboardingSchema.parse(data);
 
-    // Create onboarding record
-    const onboarding = await prisma.onboarding.create({
-      data: {
+    // Upsert to avoid unique constraint on userId when onboarding is re-opened.
+    const onboarding = await prisma.onboarding.upsert({
+      where: { userId: validatedData.userId },
+      create: {
         userId: validatedData.userId,
+        professionGoal: validatedData.professionGoal,
+        englishLevel: validatedData.englishLevel,
+        dailyMinutes: validatedData.dailyMinutes,
+        weeklyGoal: validatedData.weeklyGoal,
+        challenges: validatedData.challenges,
+        motivation: validatedData.motivation,
+        airportCode: validatedData.airportCode || null,
+        airportName: validatedData.airportName || null,
+      },
+      update: {
         professionGoal: validatedData.professionGoal,
         englishLevel: validatedData.englishLevel,
         dailyMinutes: validatedData.dailyMinutes,
@@ -34,14 +45,19 @@ export async function createOnboarding(data: unknown) {
       },
     });
 
-    // Generate personalized learning plan (30/60/90 days)
+    // Keep this legacy action safe if invoked elsewhere.
     const weeklyFocus = generateWeeklyFocus(validatedData.challenges, validatedData.englishLevel);
     
-    const learningPlan = await prisma.learningPlan.create({
-      data: {
+    const learningPlan = await prisma.learningPlan.upsert({
+      where: { userId: validatedData.userId },
+      create: {
         userId: validatedData.userId,
         weeklyFocus: weeklyFocus,
         estimatedCompletion: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
+      },
+      update: {
+        weeklyFocus: weeklyFocus,
+        estimatedCompletion: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
       },
     });
 

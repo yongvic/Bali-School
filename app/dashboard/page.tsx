@@ -39,6 +39,8 @@ export default function DashboardPage() {
   }
 
   const handleLogout = async () => {
+    const confirmed = window.confirm('Merci pour votre effort aujourd’hui. Voulez-vous vraiment vous déconnecter ?');
+    if (!confirmed) return;
     await signOut({ redirect: true, redirectUrl: '/' });
   };
 
@@ -111,12 +113,12 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       <div className="border-b border-border bg-background sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Plane className="w-6 h-6 text-primary" />
             <h1 className="text-2xl font-bold">Ravi&apos;s</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Bienvenue,</p>
               <p className="font-semibold">{session.user.name}</p>
@@ -158,6 +160,25 @@ export default function DashboardPage() {
               </>
             )}
           </div>
+
+          {!isLoading && stats && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-base">Objectif hebdomadaire</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, Math.round((stats.weeklyPoints / 300) * 100))}%` }} />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {stats.weeklyPoints}/300 points
+                  {stats.weeklyPoints >= 300
+                    ? ' - Objectif atteint, fonctionnalités bonus débloquées.'
+                    : ` - Objectif non atteint, encore ${300 - stats.weeklyPoints} points.`}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <div>
             <h2 className="text-4xl font-bold mb-4">Tableau de bord d&apos;apprentissage</h2>

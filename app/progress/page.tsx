@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Loader2, TrendingUp, Calendar, Target } from 'lucide-react';
 
 interface ProgressData {
@@ -13,6 +14,9 @@ interface ProgressData {
   exercisesCompleted: number;
   videosSubmitted: number;
   currentLevel: number;
+  currentCefr: string;
+  weeklyObjective: number;
+  weeklyObjectiveReached: boolean;
   completionPercentage: number;
 }
 
@@ -62,6 +66,7 @@ export default function ProgressPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       <div className="border-b border-border/40 bg-background/95 backdrop-blur sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-6">
+          <Button variant="outline" onClick={() => window.history.back()} className="mb-4">Retour</Button>
           <h1 className="text-3xl font-bold">Votre progression</h1>
           <p className="text-muted-foreground mt-1">Suivez votre évolution semaine après semaine</p>
         </div>
@@ -110,9 +115,27 @@ export default function ProgressPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold text-primary">{progress.currentLevel}</p>
+                  <p className="text-xs text-muted-foreground mt-1">CEFR: {progress.currentCefr}</p>
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Objectif hebdomadaire</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>{progress.weeklyPoints}/{progress.weeklyObjective} points</span>
+                  <span className={progress.weeklyObjectiveReached ? 'text-green-600' : 'text-amber-600'}>
+                    {progress.weeklyObjectiveReached ? 'Atteint' : 'Non atteint'}
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, Math.round((progress.weeklyPoints / Math.max(progress.weeklyObjective, 1)) * 100))}%` }} />
+                </div>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
@@ -174,4 +197,5 @@ export default function ProgressPage() {
     </div>
   );
 }
+
 

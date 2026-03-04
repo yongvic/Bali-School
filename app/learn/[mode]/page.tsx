@@ -2,12 +2,13 @@
 
 import { useSession } from 'next-auth/react';
 import { redirect, useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ArrowLeft, Volume2, Mic, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { computeOralScore } from '@/lib/learning-content';
 
 type Scenario = {
   id: number;
@@ -140,6 +141,15 @@ export default function LearnModePage() {
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [oralScore, setOralScore] = useState<number | null>(null);
+  const [oralFeedback, setOralFeedback] = useState('');
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [recognitionSupported, setRecognitionSupported] = useState(true);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const recognitionRef = useRef<any>(null);
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -168,14 +178,79 @@ export default function LearnModePage() {
   const totalScenarios = exercise.scenarios.length;
   const progress = ((currentScenarioIndex + 1) / totalScenarios) * 100;
 
-  const handleRecordToggle = () => {
-    setIsRecording((prev) => !prev);
-    if (!isRecording) {
+  const expectedPhrase = scenario.pronunciationWord || extractExpectedPhrase(scenario.prompt);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const mediaRecorder = new MediaRecorder(stream);
+      streamRef.current = stream;
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+      setTranscript('');
+      setOralScore(null);
+      setOralFeedback('');
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setAudioUrl(URL.createObjectURL(blob));
+      };
+
+      const SpeechRecognitionConstructor =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognitionConstructor) {
+        const recognition = new SpeechRecognitionConstructor();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = (event: any) => {
+          const value = event?.results?.[0]?.[0]?.transcript || '';
+          setTranscript(value);
+          const result = computeOralScore(value, expectedPhrase);
+          setOralScore(result.score);
+          setOralFeedback(result.feedback);
+        };
+        recognition.onerror = () => {
+          toast.error('Transcription indisponible pour cet essai.');
+        };
+        recognitionRef.current = recognition;
+        recognition.start();
+      } else {
+        setRecognitionSupported(false);
+      }
+
+      mediaRecorder.start();
+      setIsRecording(true);
       toast.success('Enregistrement démarré. Répondez en anglais.');
+    } catch (error) {
+      toast.error("Impossible d'accéder au microphone.");
+      console.error(error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (!isRecording) return;
+    mediaRecorderRef.current?.stop();
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    recognitionRef.current?.stop?.();
+    setIsRecording(false);
+    if (!transcript) {
+      const result = computeOralScore('', expectedPhrase);
+      setOralScore(result.score);
+      setOralFeedback('Aucune transcription détectée, réessayez pour une meilleure évaluation.');
     }
   };
 
   const handleSubmit = async () => {
+    if (oralScore === null) {
+      toast.error("Enregistrez d'abord une réponse orale.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/exercises/complete', {
@@ -187,6 +262,10 @@ export default function LearnModePage() {
           mode,
           title: exercise.title,
           content: scenario.prompt,
+          transcript,
+          expectedPhrase,
+          oralScore,
+          oralFeedback,
         }),
       });
 
@@ -197,6 +276,10 @@ export default function LearnModePage() {
       if (currentScenarioIndex < totalScenarios - 1) {
         setCurrentScenarioIndex(currentScenarioIndex + 1);
         setIsRecording(false);
+        setAudioUrl(null);
+        setTranscript('');
+        setOralScore(null);
+        setOralFeedback('');
       } else {
         toast.success('Exercice terminé.');
       }
@@ -276,13 +359,38 @@ export default function LearnModePage() {
               </div>
 
               <div className="flex gap-3">
-                <Button onClick={handleRecordToggle} variant={isRecording ? 'destructive' : 'outline'} size="lg" className="flex-1">
+                <Button onClick={isRecording ? stopRecording : startRecording} variant={isRecording ? 'destructive' : 'outline'} size="lg" className="flex-1">
                   <Mic className="w-4 h-4 mr-2" />
                   {isRecording ? "Arrêter l'enregistrement" : "Démarrer l'enregistrement"}
                 </Button>
-                <Button onClick={handleSubmit} disabled={!isRecording || isSubmitting} size="lg" className="flex-1">
+                <Button onClick={handleSubmit} disabled={oralScore === null || isSubmitting} size="lg" className="flex-1">
                   {isSubmitting ? 'Soumission...' : `Valider (+${scenario.points} pts)`}
                 </Button>
+              </div>
+
+              {!recognitionSupported && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+                  Transcription automatique non disponible sur ce navigateur.
+                </div>
+              )}
+
+              {audioUrl && (
+                <audio controls className="w-full">
+                  <source src={audioUrl} type="audio/webm" />
+                </audio>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Phrase attendue</p>
+                <p className="text-sm text-muted-foreground">{expectedPhrase}</p>
+                <p className="text-sm font-semibold">Transcription détectée</p>
+                <p className="text-sm text-muted-foreground">{transcript || 'Aucune transcription pour le moment.'}</p>
+                {oralScore !== null && (
+                  <div className="p-3 rounded-lg bg-primary/10 text-sm">
+                    <p className="font-semibold">Score oral: {oralScore}/100</p>
+                    <p>{oralFeedback}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -297,5 +405,11 @@ export default function LearnModePage() {
       </div>
     </div>
   );
+}
+
+function extractExpectedPhrase(prompt: string) {
+  const quoted = prompt.match(/"([^"]+)"/);
+  if (quoted?.[1]) return quoted[1];
+  return prompt;
 }
 

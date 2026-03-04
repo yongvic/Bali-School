@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VideoUploadSection } from '@/components/learning/VideoUploadSection';
 import { toast } from 'sonner';
+import { parseStructuredContent, type StructuredExercise } from '@/lib/learning-content';
 
 interface Exercise {
   id: string;
@@ -102,6 +103,9 @@ export default function ExercisePage() {
 
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [answer, setAnswer] = useState('');
+  const [correction, setCorrection] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -155,6 +159,48 @@ export default function ExercisePage() {
   }
 
   const modeGuide = exerciseModeGuides[exercise.mode] || exerciseModeGuides.CUSTOM;
+  const isOralExercise = exercise.title.toLowerCase().includes('soumission orale') || exercise.mode === 'ACCENT_TRAINING';
+  const structured = parseStructuredContent(exercise.content);
+  const interactiveExercise: StructuredExercise | null = structured?.exercises?.[0] || null;
+
+  const validateInteractive = async () => {
+    if (!interactiveExercise) return;
+    const expected =
+      typeof interactiveExercise.answer === 'string'
+        ? interactiveExercise.answer.toLowerCase()
+        : Array.isArray(interactiveExercise.answer)
+          ? interactiveExercise.answer.join(' ').toLowerCase()
+          : JSON.stringify(interactiveExercise.answer).toLowerCase();
+
+    const isCorrect = answer.trim().toLowerCase() === expected || answer.trim().toLowerCase().includes(expected);
+    setCorrection(
+      isCorrect
+        ? `Bonne réponse. ${interactiveExercise.explanation || ''}`
+        : `Réponse incorrecte. ${interactiveExercise.explanation || 'Revoyez la consigne puis réessayez.'}`
+    );
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/exercises/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exerciseId: exercise.id,
+          points: isCorrect ? exercise.pointsValue : Math.max(5, Math.round(exercise.pointsValue * 0.2)),
+          mode: exercise.mode.toLowerCase(),
+          title: exercise.title,
+          content: exercise.content,
+        }),
+      });
+      if (!response.ok) throw new Error('Échec de validation');
+      toast.success('Exercice validé.');
+    } catch (error) {
+      toast.error('Impossible de valider cet exercice');
+      console.error(error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
@@ -168,10 +214,10 @@ export default function ExercisePage() {
         </div>
 
         <Tabs defaultValue="instructions" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${isOralExercise ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="instructions">Consignes</TabsTrigger>
             <TabsTrigger value="scenario">Scénario</TabsTrigger>
-            <TabsTrigger value="record">Enregistrer</TabsTrigger>
+            {isOralExercise && <TabsTrigger value="record">Enregistrer</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="instructions" className="space-y-4">
@@ -207,7 +253,9 @@ export default function ExercisePage() {
               </CardHeader>
               <CardContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <p className="text-base leading-relaxed whitespace-pre-wrap">{exercise.content}</p>
+                  <p className="text-base leading-relaxed whitespace-pre-wrap">
+                    {structured?.listening?.dialogue || exercise.content}
+                  </p>
                 </div>
 
                 <div className="mt-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -215,17 +263,45 @@ export default function ExercisePage() {
                     Rappelez-vous: l&apos;objectif est la qualité de communication professionnelle.
                   </p>
                 </div>
+
+                {!isOralExercise && (
+                  <div className="mt-6 space-y-3">
+                    <p className="text-sm font-semibold">Exercice interactif</p>
+                    {interactiveExercise ? (
+                      <div className="space-y-3">
+                        <p className="text-sm">{interactiveExercise.prompt}</p>
+                        {interactiveExercise.options && (
+                          <p className="text-xs text-muted-foreground">Options: {interactiveExercise.options.join(' | ')}</p>
+                        )}
+                        <input
+                          className="w-full border rounded-md p-2 text-sm"
+                          value={answer}
+                          onChange={(event) => setAnswer(event.target.value)}
+                          placeholder="Votre réponse"
+                        />
+                        <Button onClick={validateInteractive} disabled={submitting || !answer.trim()}>
+                          {submitting ? 'Validation...' : `Valider (+${exercise.pointsValue} pts)`}
+                        </Button>
+                        {correction && <p className="text-sm text-muted-foreground">{correction}</p>}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Ce scénario n&apos;a pas de question interactive structurée. Utilisez le module pour la partie pratique.
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="record" className="space-y-4">
+          {isOralExercise && <TabsContent value="record" className="space-y-4">
             <div className="mb-4">
               <p className="text-lg font-semibold mb-2">Enregistrer votre réponse</p>
               <p className="text-muted-foreground">{exercise.pointsValue} points Kiki pour cette validation</p>
             </div>
             <VideoUploadSection exerciseId={exerciseId} />
-          </TabsContent>
+          </TabsContent>}
         </Tabs>
       </div>
     </div>

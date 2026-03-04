@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { createOnboarding } from './actions';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 const steps = [
@@ -64,17 +63,26 @@ export default function OnboardingPage() {
   };
 
   const handleSubmit = async () => {
-    if (!session?.user?.id) return;
-
     setIsLoading(true);
     try {
-      const result = await createOnboarding({
-        userId: session.user.id,
-        ...formData,
+      const response = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          professionGoal: formData.professionGoal,
+          englishLevel: formData.englishLevel,
+          dailyMinutes: String(formData.dailyMinutes),
+          weeklyGoal: String(formData.weeklyGoal),
+          challenges: formData.challenges,
+          motivation: formData.motivation,
+          airportCode: formData.airportCode,
+          airportName: formData.airportName,
+        }),
       });
 
-      if (result.error) {
-        toast.error(result.error);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        toast.error(payload?.message || 'Échec de l’onboarding');
         return;
       }
 

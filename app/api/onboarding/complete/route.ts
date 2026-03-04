@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { createModuleBlueprint, levelByWeek, normalizeCefrLevel } from '@/lib/learning-content';
 import { z } from 'zod';
 
 const onboardingSchema = z.object({
@@ -96,6 +97,14 @@ async function generateLearningPlan(userId: string, data: z.infer<typeof onboard
     },
   });
 
+  // Rebuild modules each time onboarding is updated to keep plan consistent and reusable.
+  await prisma.exercise.deleteMany({
+    where: { module: { planId: plan.id } },
+  });
+  await prisma.module.deleteMany({
+    where: { planId: plan.id },
+  });
+
   // Create modules for each week
   await createModules(plan.id, data.englishLevel, currentUserId);
 
@@ -103,19 +112,19 @@ async function generateLearningPlan(userId: string, data: z.infer<typeof onboard
 }
 
 function generateWeeklyFocus(data: z.infer<typeof onboardingSchema>): string[] {
-  const baseModules = [
-    'Basic Greetings & Introductions',
-    'Passenger Service Requests',
-    'Safety Procedures',
-    'In-flight Announcements',
-    'Emergency Phrases',
-    'Customs & Immigration',
-    'Complaint Handling',
-    'Special Requests',
-    'Cabin Crew Coordination',
-    'Professional Communication',
-    'Advanced Scenarios',
-    'Comprehensive Review',
+  const baseModules: string[] = [
+    'A1 Foundations: Greetings & Seat Guidance',
+    'A1 Foundations: Basic Passenger Requests',
+    'A2 Cabin Service: Food, Beverage, Polite Requests',
+    'A2 Cabin Service: Clarification and Directions',
+    'B1 Operations: In-flight Announcements',
+    'B1 Operations: Listening and Passenger Assistance',
+    'B1 Operations: Lost Passenger & Re-routing',
+    'B2 Professional: Conflict and Complaint Handling',
+    'B2 Professional: Interview Company Readiness',
+    'B2 Professional: Urgence and Safety Precision',
+    'C1 Performance: Secret Challenge Scenarios',
+    'C1 Performance: Capstone Video Assessment',
   ];
 
   // Adjust based on level
@@ -140,93 +149,61 @@ function generateWeeklyFocus(data: z.infer<typeof onboardingSchema>): string[] {
 }
 
 async function createModules(planId: string, englishLevel: string, userId: string) {
-  const weeks = 12;
-  const levelPointTarget = englishLevel.startsWith('A') ? 200 : englishLevel.startsWith('B') ? 250 : 300;
-
-  const exerciseTemplates = [
-    {
-      mode: 'PASSENGER',
-      title: 'Passenger Service Request',
-      description: 'A passenger asks for a specific beverage. Respond professionally.',
-      content: 'Passenger: "Can I get a glass of water with ice, please?"',
-      points: 60,
-    },
-    {
-      mode: 'ACCENT_TRAINING',
-      title: 'Pronunciation: Coffee vs Tea',
-      description: 'Practice pronouncing these common beverage words.',
-      content: 'Pronounce clearly: "coffee", "tea", "juice", "water"',
-      points: 50,
-    },
-    {
-      mode: 'EMERGENCY',
-      title: 'Emergency Phrases',
-      description: 'Learn and practice critical safety announcements.',
-      content: 'Practice: "This is an emergency descent. Put on your oxygen mask."',
-      points: 70,
-    },
-    {
-      mode: 'ROLE_PLAY',
-      title: 'Handling Complaints',
-      description: 'A passenger is unhappy with their meal. Resolve professionally.',
-      content: 'Passenger: "This meal is cold! What are you going to do about it?"',
-      points: 75,
-    },
-    {
-      mode: 'LISTENING',
-      title: 'Listening Comprehension',
-      description: 'Listen and answer questions about in-flight announcements.',
-      content: 'Listen to the announcement and answer: What is the flight duration?',
-      points: 55,
-    },
-    {
-      mode: 'WHEEL_OF_ENGLISH',
-      title: 'Random Topic Challenge',
-      description: 'Spin the wheel and speak about your topic for 2 minutes.',
-      content: 'Topic will be randomly selected from aviation-related subjects.',
-      points: 65,
-    },
-    {
-      mode: 'SECRET_CHALLENGE',
-      title: 'Unexpected Scenario',
-      description: 'Handle an unexpected passenger situation with grace.',
-      content: 'A passenger suddenly becomes ill. What do you do?',
-      points: 80,
-    },
-    {
-      mode: 'CUSTOM',
-      title: 'Your Own Scenario',
-      description: 'Share a scenario you\'d like to practice. Be creative!',
-      content: 'Create or describe an aviation scenario you want to practice.',
-      points: 40,
-    },
+  const normalizedLevel = normalizeCefrLevel(englishLevel);
+  const levelPointTarget = normalizedLevel.startsWith('A') ? 220 : normalizedLevel.startsWith('B') ? 280 : 340;
+  const modeRotation: Array<{
+    mode: any;
+    title: string;
+    description: string;
+    points: number;
+    topic: string;
+  }> = [
+    { mode: 'PASSENGER', title: 'Passenger Mode', description: 'Passenger requests in context.', points: 60, topic: 'passenger service' },
+    { mode: 'ACCENT_TRAINING', title: 'Accent Training Mode', description: 'Pronunciation and rhythm refinement.', points: 65, topic: 'pronunciation' },
+    { mode: 'SECRET_CHALLENGE', title: 'Secret Challenge Mode', description: 'Unexpected scenario response.', points: 75, topic: 'unexpected service events' },
+    { mode: 'WHEEL_OF_ENGLISH', title: 'Wheel of English', description: 'Random topic with timed speaking.', points: 60, topic: 'fluency and reaction' },
+    { mode: 'LOVE_AND_ENGLISH', title: 'Love & English Mode', description: 'Warm and premium customer language.', points: 55, topic: 'empathy and tone' },
+    { mode: 'EMERGENCY', title: 'Mode Urgence', description: 'Critical safety communication.', points: 80, topic: 'emergency communication' },
+    { mode: 'INTERVIEW_COMPANY', title: 'Mode Interview Compagnie', description: 'Interview readiness drills.', points: 70, topic: 'airline interview communication' },
+    { mode: 'LOST_PASSENGER', title: 'Lost Passenger Mode', description: 'Helping disoriented passengers.', points: 65, topic: 'airport guidance' },
   ];
 
-  for (let week = 1; week <= weeks; week++) {
-    const focus = ['Basic', 'Intermediate', 'Advanced'][Math.min(Math.floor(week / 4), 2)];
-    
+  for (let week = 1; week <= 12; week++) {
+    const cefrLevel = levelByWeek(week);
     const module = await prisma.module.create({
       data: {
         planId,
         week,
-        title: `Week ${week}: ${focus} English for Aviation (${week <= 4 ? '30-day' : week <= 8 ? '60-day' : '90-day'} plan)`,
-        description: `Focus on aviation-specific English with practical exercises and real-world scenarios.`,
+        title: `Semaine ${week} - Niveau ${cefrLevel}`,
+        description: `Module ${cefrLevel} centré sur les compétences écoute, vocabulaire, grammaire et production orale.`,
         targetPoints: levelPointTarget,
       },
     });
 
-    // Create 2-3 exercises per module
-    const exercisesThisWeek = exerciseTemplates.slice(0, week % 3 === 0 ? 3 : 2);
-    
-    for (const template of exercisesThisWeek) {
+    const picks = [
+      modeRotation[(week - 1) % modeRotation.length],
+      modeRotation[week % modeRotation.length],
+    ];
+
+    // Add a mandatory end-of-module video exercise for oral validation.
+    picks.push({
+      mode: 'ROLE_PLAY',
+      title: 'Soumission orale de fin de module',
+      description: 'Vidéo finale obligatoire pour valider le module et le niveau.',
+      points: 90,
+      topic: 'final oral assessment',
+    });
+
+    for (const template of picks) {
+      const blueprint = createModuleBlueprint(cefrLevel, template.topic);
       await prisma.exercise.create({
         data: {
           userId,
           moduleId: module.id,
-          mode: template.mode as any,
+          mode: template.mode,
           title: template.title,
           description: template.description,
-          content: template.content,
+          content: JSON.stringify(blueprint),
           pointsValue: template.points,
         },
       });

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const { exerciseId, points, mode, title, content } = await request.json();
+    const { exerciseId, points, mode, title, content, transcript, expectedPhrase, oralScore, oralFeedback } = await request.json();
 
     if (!exerciseId || !points) {
       return NextResponse.json(
@@ -19,6 +19,10 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const pronunciationBonus =
+      typeof oralScore === 'number' && oralScore >= 85 ? 15 : typeof oralScore === 'number' && oralScore >= 70 ? 8 : 0;
+    const finalPoints = points + pronunciationBonus;
 
     // Update existing exercise or create a lightweight standalone exercise entry.
     // This keeps legacy free-mode pages functional even without a pre-generated exercise row.
@@ -30,7 +34,20 @@ export async function POST(request: Request) {
     if (existingExercise) {
       await prisma.exercise.update({
         where: { id: existingExercise.id },
-        data: { completed: true, completedAt: new Date() },
+        data: {
+          completed: true,
+          completedAt: new Date(),
+          content:
+            transcript || oralFeedback
+              ? JSON.stringify({
+                  prompt: content || '',
+                  transcript: transcript || '',
+                  expectedPhrase: expectedPhrase || '',
+                  oralScore: oralScore ?? null,
+                  oralFeedback: oralFeedback || '',
+                })
+              : undefined,
+        },
       });
     } else {
       let moduleId: string | null = null;
@@ -73,15 +90,24 @@ export async function POST(request: Request) {
           moduleId: moduleId!,
           mode: normalizeMode(mode),
           title: title || `Exercise ${exerciseId}`,
-          content: content || 'Ad-hoc exercise response',
-          pointsValue: points,
+          content:
+            transcript || oralFeedback
+              ? JSON.stringify({
+                  prompt: content || '',
+                  transcript: transcript || '',
+                  expectedPhrase: expectedPhrase || '',
+                  oralScore: oralScore ?? null,
+                  oralFeedback: oralFeedback || '',
+                })
+              : content || 'Ad-hoc exercise response',
+          pointsValue: finalPoints,
           completed: true,
           completedAt: new Date(),
         },
       });
     }
 
-    await awardPoints(session.user.id, points, 'exercise_complete');
+    await awardPoints(session.user.id, finalPoints, 'exercise_complete');
     const badges = await checkAndUnlockBadges(session.user.id);
     await refreshAirportMap(session.user.id);
 
@@ -92,7 +118,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      pointsAwarded: points,
+      pointsAwarded: finalPoints,
+      pronunciationBonus,
+      oralScore: oralScore ?? null,
+      oralFeedback: oralFeedback ?? null,
       totalPoints: kikiPoints?.totalPoints || 0,
       newBadges: badges,
     });
@@ -123,13 +152,11 @@ function normalizeMode(mode?: string) {
     case 'love-english':
       return 'LOVE_AND_ENGLISH' as const;
     case 'reading':
-      return 'READING' as const;
     case 'quiz':
-      return 'QUIZ' as const;
     case 'vocabulary':
-      return 'VOCABULARY' as const;
     case 'speaking':
-      return 'SPEAKING' as const;
+      // Keep ad-hoc completion compatible with older DB enum states.
+      return 'CUSTOM' as const;
     case 'emergency':
       return 'EMERGENCY' as const;
     case 'listening':

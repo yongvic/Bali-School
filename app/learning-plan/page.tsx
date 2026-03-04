@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Download, Calendar, Target, Layers, Rocket } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface Module {
   week: number;
@@ -31,6 +32,9 @@ export default function LearningPlanPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [justGenerated, setJustGenerated] = useState(false);
+  const [levelToApply, setLevelToApply] = useState('B1');
+  const [focusInput, setFocusInput] = useState('');
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
   if (status === 'unauthenticated') {
     redirect('/auth/signin');
@@ -111,6 +115,36 @@ export default function LearningPlanPage() {
     }
   };
 
+  const handleUpdatePlan = async () => {
+    setIsUpdatingPlan(true);
+    try {
+      const weeklyFocus = focusInput
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      const response = await fetch('/api/learning-plan', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          englishLevel: levelToApply,
+          weeklyFocus: weeklyFocus.length ? weeklyFocus : undefined,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || 'Mise à jour impossible');
+      }
+
+      toast.success('Plan mis à jour. Rechargement...');
+      window.location.reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Échec de mise à jour du plan');
+    } finally {
+      setIsUpdatingPlan(false);
+    }
+  };
+
   if (status === 'loading' || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
@@ -146,6 +180,7 @@ export default function LearningPlanPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted py-12">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-8">
+          <Button variant="outline" onClick={() => window.history.back()} className="mb-4">Retour</Button>
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-4xl font-bold mb-2">Votre plan sur 12 semaines</h1>
@@ -245,6 +280,27 @@ export default function LearningPlanPage() {
             <p className="text-muted-foreground">Votre plan est prêt. Commencez par la semaine 1 et progressez module par module.</p>
             <Button size="lg" className="w-full gap-2" onClick={() => router.push('/learn')}>
               Commencer la semaine 1
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Modifier mon plan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Vous pouvez ajuster le niveau et les axes hebdomadaires sans refaire l&apos;onboarding.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input value={levelToApply} onChange={(event) => setLevelToApply(event.target.value.toUpperCase())} placeholder="Niveau (A1-C1)" />
+              <Input
+                className="md:col-span-2"
+                value={focusInput}
+                onChange={(event) => setFocusInput(event.target.value)}
+                placeholder="Axes hebdomadaires séparés par des virgules"
+              />
+            </div>
+            <Button onClick={handleUpdatePlan} disabled={isUpdatingPlan}>
+              {isUpdatingPlan ? 'Mise à jour...' : 'Mettre à jour le plan'}
             </Button>
           </CardContent>
         </Card>

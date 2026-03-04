@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { levelByWeek } from '@/lib/learning-content';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request) {
@@ -35,20 +36,31 @@ export async function GET(req: Request) {
     ]);
 
     let completionPercentage = 0;
+    let currentCefr = 'A1';
     if (plan) {
       const totalExercises = plan.modules.reduce((acc, m) => acc + m.exercises.length, 0);
       completionPercentage = totalExercises > 0 ? (exercises / totalExercises) * 100 : 0;
+      const validatedModuleWeeks = plan.modules
+        .filter((m) => m.exercises.length > 0 && m.exercises.every((exercise) => exercise.completed))
+        .map((m) => m.week);
+      const furthestWeek = validatedModuleWeeks.length ? Math.max(...validatedModuleWeeks) : 1;
+      currentCefr = levelByWeek(furthestWeek);
     }
 
     const currentLevel = Math.floor((kikiPoints?.totalPoints || 0) / 1000) + 1;
+    const weeklyObjective = kikiPoints?.monthlyObjective || 300;
+    const weeklyPoints = kikiPoints?.weeklyPoints || 0;
 
     return Response.json({
       totalPoints: kikiPoints?.totalPoints || 0,
-      weeklyPoints: kikiPoints?.weeklyPoints || 0,
+      weeklyPoints,
       monthlyPoints: kikiPoints?.monthlyPoints || 0,
       exercisesCompleted: exercises,
       videosSubmitted: videos,
       currentLevel,
+      currentCefr,
+      weeklyObjective,
+      weeklyObjectiveReached: weeklyPoints >= weeklyObjective,
       completionPercentage: Math.round(completionPercentage),
     });
   } catch (error) {

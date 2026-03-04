@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExerciseCard } from '@/components/learning/ExerciseCard';
 import { toast } from 'sonner';
 import { ProgressBar } from '@/components/learning/ProgressBar';
-import { CircleCheckBig, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CircleCheckBig, ArrowRight, ArrowLeft, Volume2 } from 'lucide-react';
+import { parseStructuredContent, type ModuleBlueprint, type StructuredExercise } from '@/lib/learning-content';
 
 interface Module {
   id: string;
@@ -23,6 +24,7 @@ interface Module {
     description: string;
     pointsValue: number;
     completed: boolean;
+    content?: string;
   }[];
 }
 
@@ -35,6 +37,9 @@ export default function ModulePage() {
   const [module, setModule] = useState<Module | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [weekProgress, setWeekProgress] = useState(0);
+  const [blueprint, setBlueprint] = useState<ModuleBlueprint | null>(null);
+  const [interactiveAnswers, setInteractiveAnswers] = useState<Record<string, string>>({});
+  const [feedbackByExercise, setFeedbackByExercise] = useState<Record<string, string>>({});
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -56,6 +61,10 @@ export default function ModulePage() {
 
         const data = await response.json();
         setModule(data);
+        const firstStructured = data.exercises
+          .map((exercise: { content?: string }) => parseStructuredContent(exercise.content || ''))
+          .find(Boolean) as ModuleBlueprint | undefined;
+        setBlueprint(firstStructured || null);
 
         const completedCount = data.exercises.filter((e: { completed: boolean }) => e.completed).length;
         const progress = data.exercises.length > 0 ? (completedCount / data.exercises.length) * 100 : 0;
@@ -103,6 +112,39 @@ export default function ModulePage() {
     .filter((e) => e.completed)
     .reduce((sum, e) => sum + e.pointsValue, 0);
 
+  const speak = (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      toast.error('Synthèse vocale non disponible sur ce navigateur.');
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const evaluateStructuredExercise = (exercise: StructuredExercise) => {
+    const rawAnswer = interactiveAnswers[exercise.id]?.trim() || '';
+    if (!rawAnswer) {
+      setFeedbackByExercise((prev) => ({ ...prev, [exercise.id]: 'Réponse manquante.' }));
+      return;
+    }
+
+    const expected =
+      typeof exercise.answer === 'string'
+        ? exercise.answer.toLowerCase()
+        : Array.isArray(exercise.answer)
+          ? exercise.answer.join(' ').toLowerCase()
+          : JSON.stringify(exercise.answer).toLowerCase();
+
+    const success = rawAnswer.toLowerCase() === expected || rawAnswer.toLowerCase().includes(expected);
+    const explanation = exercise.explanation || 'Revoyez la règle et réessayez.';
+    setFeedbackByExercise((prev) => ({
+      ...prev,
+      [exercise.id]: success ? `Correct. ${explanation}` : `Incorrect. ${explanation}`,
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -143,6 +185,92 @@ export default function ModulePage() {
         </Card>
 
         <div>
+          {blueprint && (
+            <div className="space-y-6 mb-8">
+              <h2 className="text-2xl font-bold">Structure pédagogique du module</h2>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Introduction pédagogique</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <p><span className="font-semibold text-foreground">Objectif:</span> {blueprint.introduction.objective}</p>
+                  <p><span className="font-semibold text-foreground">Compétence ciblée:</span> {blueprint.introduction.skill}</p>
+                  <p><span className="font-semibold text-foreground">Prérequis:</span> {blueprint.introduction.prerequisites}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Vocabulaire ciblé</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {blueprint.vocabulary.map((item) => (
+                    <div key={item.word} className="p-3 border rounded-lg space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold">{item.word} - <span className="font-normal text-muted-foreground">{item.translation}</span></p>
+                        <Button size="sm" variant="outline" onClick={() => speak(item.audioText)} className="gap-2">
+                          <Volume2 className="w-4 h-4" /> Audio
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{item.example}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Grammaire</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <p><span className="font-semibold">Règle:</span> {blueprint.grammar.rule}</p>
+                  {blueprint.grammar.examples.map((example) => <p key={example} className="text-muted-foreground">{example}</p>)}
+                  <p><span className="font-semibold">Mini-exercice:</span> {blueprint.grammar.miniExercise}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Compréhension orale</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">{blueprint.listening.dialogue}</p>
+                  <Button size="sm" variant="outline" onClick={() => speak(blueprint.listening.dialogue)} className="gap-2">
+                    <Volume2 className="w-4 h-4" /> Lire le dialogue
+                  </Button>
+                  <div className="space-y-1">
+                    {blueprint.listening.questions.map((question) => <p key={question}>- {question}</p>)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Exercices interactifs auto-corrigés</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {blueprint.exercises.map((exercise) => (
+                    <div key={exercise.id} className="border rounded-lg p-3 space-y-2">
+                      <p className="font-semibold">{exercise.kind.toUpperCase()} - {exercise.prompt}</p>
+                      {exercise.options && <p className="text-sm text-muted-foreground">Options: {exercise.options.join(' | ')}</p>}
+                      <input
+                        className="w-full border rounded-md p-2 text-sm"
+                        value={interactiveAnswers[exercise.id] || ''}
+                        onChange={(event) => setInteractiveAnswers((prev) => ({ ...prev, [exercise.id]: event.target.value }))}
+                        placeholder="Votre réponse"
+                      />
+                      <div className="flex items-center gap-3">
+                        <Button size="sm" onClick={() => evaluateStructuredExercise(exercise)}>Vérifier</Button>
+                        {feedbackByExercise[exercise.id] && <p className="text-xs text-muted-foreground">{feedbackByExercise[exercise.id]}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           <h2 className="text-2xl font-bold mb-6">Exercices</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {module.exercises.map((exercise) => (

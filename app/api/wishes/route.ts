@@ -15,12 +15,28 @@ export async function GET() {
       return Response.json({ message: 'Non autorisé' }, { status: 401 });
     }
 
-    const wishes = await prisma.wish.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [wishes, points] = await Promise.all([
+      prisma.wish.findMany({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.kikiPoints.findUnique({
+        where: { userId: session.user.id },
+        select: { weeklyPoints: true, monthlyObjective: true },
+      }),
+    ]);
 
-    return Response.json(wishes);
+    const objective = points?.monthlyObjective ?? 300;
+    const current = points?.weeklyPoints ?? 0;
+    const canCreateWish = current >= objective;
+
+    return Response.json({
+      wishes,
+      canCreateWish,
+      weeklyPoints: current,
+      weeklyObjective: objective,
+      remainingToUnlock: Math.max(objective - current, 0),
+    });
   } catch (error) {
     console.error('Wishes fetch error:', error);
     return Response.json({ message: 'Erreur interne du serveur' }, { status: 500 });
@@ -32,6 +48,25 @@ export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
       return Response.json({ message: 'Non autorisé' }, { status: 401 });
+    }
+
+    const points = await prisma.kikiPoints.findUnique({
+      where: { userId: session.user.id },
+      select: { weeklyPoints: true, monthlyObjective: true },
+    });
+
+    const objective = points?.monthlyObjective ?? 300;
+    const current = points?.weeklyPoints ?? 0;
+    if (current < objective) {
+      return Response.json(
+        {
+          message: "Objectif hebdomadaire non atteint. Les souhaits se débloquent après l'objectif.",
+          weeklyPoints: current,
+          weeklyObjective: objective,
+          remainingToUnlock: objective - current,
+        },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

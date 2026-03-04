@@ -14,6 +14,10 @@ import {
   ShieldAlert,
   Star,
   PenSquare,
+  HeartHandshake,
+  Briefcase,
+  UserX,
+  MessageCircleHeart,
 } from 'lucide-react';
 
 interface ExerciseCardProps {
@@ -34,6 +38,10 @@ const modeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   ROLE_PLAY: Theater,
   LISTENING: Ear,
   EMERGENCY: ShieldAlert,
+  LOVE_AND_ENGLISH: HeartHandshake,
+  INTERVIEW_COMPANY: Briefcase,
+  LOST_PASSENGER: UserX,
+  SPEAKING: MessageCircleHeart,
   CUSTOM: Star,
 };
 
@@ -45,6 +53,10 @@ const modeColors: Record<string, string> = {
   ROLE_PLAY: 'bg-green-500/10 border-green-500/20',
   LISTENING: 'bg-cyan-500/10 border-cyan-500/20',
   EMERGENCY: 'bg-orange-500/10 border-orange-500/20',
+  LOVE_AND_ENGLISH: 'bg-rose-500/10 border-rose-500/20',
+  INTERVIEW_COMPANY: 'bg-indigo-500/10 border-indigo-500/20',
+  LOST_PASSENGER: 'bg-teal-500/10 border-teal-500/20',
+  SPEAKING: 'bg-lime-500/10 border-lime-500/20',
   CUSTOM: 'bg-pink-500/10 border-pink-500/20',
 };
 

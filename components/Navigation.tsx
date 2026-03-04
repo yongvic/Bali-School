@@ -73,7 +73,11 @@ export function Navigation() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => signOut({ redirect: true, redirectUrl: '/' })}
+            onClick={() => {
+              const confirmed = window.confirm('Avant de partir, souhaitez-vous vraiment vous déconnecter maintenant ?');
+              if (!confirmed) return;
+              signOut({ redirect: true, redirectUrl: '/' });
+            }}
           >
             Déconnexion
           </Button>

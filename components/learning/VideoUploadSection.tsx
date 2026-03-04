@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, type ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, AlertTriangle, Upload, Loader, Video, Square, Eraser, BadgeCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Upload, Loader, Video, Square, Eraser, BadgeCheck, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateVideo, ValidationResult } from '@/lib/video-validation';
 
@@ -21,6 +21,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const startRecording = async () => {
     try {
@@ -119,6 +120,14 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
     }
   };
 
+  const handleFilePick = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setRecordedBlob(file);
+    setValidation(null);
+    toast.success('Vidéo sélectionnée depuis la galerie.');
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -154,6 +163,17 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
                 ) : (
                   <Button onClick={stopRecording} variant="destructive" className="flex-1 gap-2" size="lg"><Square className="w-4 h-4" />Arrêter l&apos;enregistrement</Button>
                 )}
+                <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="flex-1 gap-2" size="lg">
+                  <Upload className="w-4 h-4" />Choisir depuis la galerie
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  capture="user"
+                  onChange={handleFilePick}
+                  className="hidden"
+                />
               </>
             )}
 
@@ -226,6 +246,7 @@ export function VideoUploadSection({ exerciseId, onUploadSuccess }: VideoUploadS
           <CardTitle className="text-base">Exigences vidéo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
+          <div className="flex items-start gap-2"><Camera className="w-4 h-4 mt-0.5 text-blue-600 dark:text-blue-400" /><span>Soumission possible via caméra directe ou galerie de fichiers</span></div>
           <div className="flex items-start gap-2"><span className="text-blue-600 dark:text-blue-400 font-semibold">•</span><span>Durée: 10 secondes à 5 minutes</span></div>
           <div className="flex items-start gap-2"><span className="text-blue-600 dark:text-blue-400 font-semibold">•</span><span>Format: WebM, MP4, MOV ou AVI</span></div>
           <div className="flex items-start gap-2"><span className="text-blue-600 dark:text-blue-400 font-semibold">•</span><span>Taille maximale: 100 MB</span></div>

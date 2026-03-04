@@ -24,6 +24,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             mode: true,
             title: true,
             description: true,
+            content: true,
             pointsValue: true,
             completed: true,
           },
@@ -47,7 +48,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       );
     }
 
-    // Block access to a module if any previous module has rejected/revision-needed videos.
+    // Block access unless all previous modules are fully validated.
     const previousModules = await prisma.module.findMany({
       where: {
         planId: module.planId,
@@ -65,17 +66,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       },
     });
 
-    const blocked = previousModules.some((m) =>
-      m.exercises.some((exercise) =>
-        exercise.videoSubmissions.some((video) => ['REJECTED', 'REVISION_NEEDED'].includes(video.status))
-      )
-    );
+    const blocked = previousModules.some((m) => {
+      const allCompleted = m.exercises.length > 0 && m.exercises.every((e) => e.completed);
+      const oralApproved = m.exercises
+        .filter((e) => e.title.toLowerCase().includes('soumission orale'))
+        .every((e) => e.videoSubmissions.some((v) => v.status === 'APPROVED'));
+      const hasRejected = m.exercises.some((e) =>
+        e.videoSubmissions.some((v) => ['REJECTED', 'REVISION_NEEDED'].includes(v.status))
+      );
+      return !allCompleted || !oralApproved || hasRejected;
+    });
 
     if (blocked) {
       return Response.json(
         {
           message:
-            'Module bloqué: une vidéo d’un module précédent a été refusée ou demande une révision.',
+            'Module bloqué: validez complètement le module précédent (exercices terminés + vidéo orale approuvée).',
         },
         { status: 423 }
       );
