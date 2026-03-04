@@ -2,10 +2,12 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
-import { Plane, Menu } from 'lucide-react';
+import { Menu, User } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function Navigation() {
   const sessionState = useSession();
@@ -26,6 +28,7 @@ export function Navigation() {
 
   const studentLinks = [
     { href: '/dashboard', label: 'Tableau de bord' },
+    { href: '/profile', label: 'Profil' },
     { href: '/learning-plan', label: "Plan d'apprentissage" },
     { href: '/gamification', label: 'Récompenses' },
     { href: '/notifications', label: 'Notifications' },
@@ -34,6 +37,7 @@ export function Navigation() {
   ];
 
   const adminLinks = [
+    { href: '/profile', label: 'Profil' },
     { href: '/admin/dashboard', label: 'Administration' },
   ];
 
@@ -43,8 +47,7 @@ export function Navigation() {
     <nav className="border-b border-border bg-background sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl">
-          <Plane className="w-5 h-5 text-primary" />
-          <span>Ravi&apos;s</span>
+          <Image src="/logo.svg" alt="Ravi's" width={120} height={30} className="h-7 w-auto max-w-[120px] md:h-6 md:max-w-[110px]" priority />
         </Link>
 
         {/* Desktop Navigation */}
@@ -73,6 +76,12 @@ export function Navigation() {
             <Menu className="h-4 w-4" />
           </Button>
           <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+            <Avatar className="h-8 w-8 border">
+              <AvatarImage src={session.user.image || undefined} alt={session.user.name || 'Profil'} />
+              <AvatarFallback>
+                {session.user.name?.slice(0, 1).toUpperCase() || <User className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
             <span>{session.user.name}</span>
           </div>
           <Button
@@ -81,7 +90,7 @@ export function Navigation() {
             onClick={() => {
               const confirmed = window.confirm('Avant de partir, souhaitez-vous vraiment vous déconnecter maintenant ?');
               if (!confirmed) return;
-              signOut({ redirect: true, redirectUrl: '/' });
+              signOut({ redirect: true, callbackUrl: '/' });
             }}
           >
             Déconnexion

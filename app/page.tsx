@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Plane, Zap, Users, Award } from 'lucide-react';
 
@@ -19,7 +20,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="border-b border-border/40 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="text-2xl font-bold text-primary">Ravi&apos;s</div>
+          <Image src="/logo.svg" alt="Ravi's" width={132} height={32} className="h-8 w-auto max-w-[132px] md:h-7 md:max-w-[122px]" priority />
           <div className="flex gap-4">
             <Link href="/auth/signin">
               <Button variant="ghost">Se connecter</Button>

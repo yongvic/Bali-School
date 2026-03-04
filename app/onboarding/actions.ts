@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { rebuildPlanModules } from '@/lib/module-generation';
 import { z } from 'zod';
 
 const onboardingSchema = z.object({
@@ -32,6 +33,9 @@ export async function createOnboarding(data: unknown) {
         motivation: validatedData.motivation,
         airportCode: validatedData.airportCode || null,
         airportName: validatedData.airportName || null,
+        readyInWeeks: 12,
+        comfortableOnCamera: true,
+        biggestDifficulty: null,
       },
       update: {
         professionGoal: validatedData.professionGoal,
@@ -42,6 +46,8 @@ export async function createOnboarding(data: unknown) {
         motivation: validatedData.motivation,
         airportCode: validatedData.airportCode || null,
         airportName: validatedData.airportName || null,
+        readyInWeeks: 12,
+        comfortableOnCamera: true,
       },
     });
 
@@ -61,20 +67,7 @@ export async function createOnboarding(data: unknown) {
       },
     });
 
-    // Create modules for weeks 1-12
-    const modules = [];
-    for (let week = 1; week <= 12; week++) {
-      const module = await prisma.module.create({
-        data: {
-          planId: learningPlan.id,
-          week: week,
-          title: `Week ${week}: ${weeklyFocus[week - 1] || 'Comprehensive Review'}`,
-          description: `Focus on ${weeklyFocus[week - 1] || 'overall progress'}`,
-          targetPoints: 300, // 300 points per week = 25 points per day
-        },
-      });
-      modules.push(module);
-    }
+    await rebuildPlanModules(learningPlan.id, validatedData.userId, validatedData.englishLevel);
 
     return { success: true, onboardingId: onboarding.id, planId: learningPlan.id };
   } catch (error) {

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -15,11 +15,12 @@ export async function POST(
       );
     }
 
+    const { id } = await params;
     const { decision, textFeedback, grade, strengths, improvements } = await req.json();
 
     // Get the video and its owner
     const video = await prisma.video.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { userId: true, status: true },
     });
 
@@ -32,9 +33,9 @@ export async function POST(
 
     // Create or update feedback record
     const feedback = await prisma.adminFeedback.upsert({
-      where: { videoId: params.id },
+      where: { videoId: id },
       create: {
-        videoId: params.id,
+        videoId: id,
         adminId: session.user.id,
         decision,
         textFeedback,
@@ -54,7 +55,7 @@ export async function POST(
 
     // Update video status
     await prisma.video.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status: decision,
         validatedAt: new Date(),
@@ -64,7 +65,7 @@ export async function POST(
     // If approved, award bonus points
     if (decision === 'APPROVED') {
       const { approveVideo } = await import('@/lib/gamification');
-      await approveVideo(video.userId, params.id);
+      await approveVideo(video.userId, id);
     }
 
     return Response.json(

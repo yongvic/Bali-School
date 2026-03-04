@@ -29,6 +29,11 @@ const BADGE_DEFINITIONS = {
   GRAMMAR_CHAMPION: { name: 'Grammar Champion', icon: BookOpen },
   LISTENING_LEGEND: { name: 'Listening Legend', icon: Ear },
   WHEEL_WINNER: { name: 'Wheel Winner', icon: CircleDotDashed },
+  LEVEL_A1: { name: 'Badge Niveau A1', icon: Target },
+  LEVEL_A2: { name: 'Badge Niveau A2', icon: BookOpen },
+  LEVEL_B1: { name: 'Badge Niveau B1', icon: Star },
+  LEVEL_B2: { name: 'Badge Niveau B2', icon: Shield },
+  LEVEL_C1: { name: 'Badge Niveau C1', icon: Crown },
 } as const;
 
 type BadgeCode = keyof typeof BADGE_DEFINITIONS;

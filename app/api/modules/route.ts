@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { levelByWeek } from '@/lib/learning-content';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request) {
@@ -27,7 +28,12 @@ export async function GET(req: Request) {
       },
     });
 
-    return Response.json(modules);
+    return Response.json(
+      modules.map((module) => ({
+        ...module,
+        cefrLevel: levelByWeek(module.week),
+      }))
+    );
   } catch (error) {
     console.error('Modules fetch error:', error);
     return Response.json(

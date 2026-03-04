@@ -70,6 +70,8 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "eslint": "^9.22.0",
+    "eslint-config-next": "16.1.6",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22",

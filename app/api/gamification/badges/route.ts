@@ -28,6 +28,21 @@ export async function GET() {
       weeklyPoints: kikiPoints?.weeklyPoints || 0,
       unlockedBadges: badges.map(b => b.badgeType),
       exercisesCompleted: completedExercises,
+      badges: [
+        'FIRST_EXERCISE',
+        'PRONUNCIATION_STAR',
+        'CABIN_MASTER',
+        'SAFETY_GURU',
+        'CONSISTENCY_KING',
+        'GRAMMAR_CHAMPION',
+        'LISTENING_LEGEND',
+        'WHEEL_WINNER',
+        'LEVEL_A1',
+        'LEVEL_A2',
+        'LEVEL_B1',
+        'LEVEL_B2',
+        'LEVEL_C1',
+      ],
       nextBadgeProgress: calculateProgress(completedExercises),
     });
   } catch (error) {

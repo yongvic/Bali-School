@@ -143,12 +143,18 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        <Card>
+        <Card className="border border-border bg-card">
           <CardHeader>
             <CardTitle>{steps[currentStep].title}</CardTitle>
             <CardDescription>{steps[currentStep].description}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+              <p className="font-semibold text-primary">Consignes de la phase</p>
+              <p className="text-xs text-muted-foreground">
+                Suivez les instructions ci-dessous : lisez attentivement la question, choisissez ou écrivez la réponse précise attendue et avancez étape par étape.
+              </p>
+            </div>
             {currentStep === 0 && (
               <div className="space-y-4">
                 <div className="space-y-3">

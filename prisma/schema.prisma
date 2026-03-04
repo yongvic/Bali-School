@@ -315,6 +315,11 @@ enum BadgeType {
   GRAMMAR_CHAMPION    // 3 grammar exercises
   LISTENING_LEGEND    // 3 listening exercises
   WHEEL_WINNER        // 5 wheel of English spins
+  LEVEL_A1            // Validate at least one A1 module
+  LEVEL_A2            // Validate at least one A2 module
+  LEVEL_B1            // Validate at least one B1 module
+  LEVEL_B2            // Validate at least one B2 module
+  LEVEL_C1            // Validate at least one C1 module
 }
 
 // Gamification: Kiki Points system

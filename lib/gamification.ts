@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { levelByWeek, type CefrLevel } from '@/lib/learning-content';
+import type { BadgeType } from '@prisma/client';
 
 /**
  * Award Kiki Points to a user
@@ -64,7 +66,7 @@ export async function resetWeeklyPointsIfNeeded(userId: string): Promise<void> {
 /**
  * Unlock a badge for a user
  */
-export async function unlockBadge(userId: string, badgeType: string): Promise<boolean> {
+export async function unlockBadge(userId: string, badgeType: BadgeType): Promise<boolean> {
   try {
     await prisma.badge.create({
       data: {
@@ -87,8 +89,8 @@ export async function unlockBadge(userId: string, badgeType: string): Promise<bo
 /**
  * Check and unlock badges based on user progress
  */
-export async function checkAndUnlockBadges(userId: string): Promise<string[]> {
-  const unlockedBadges: string[] = [];
+export async function checkAndUnlockBadges(userId: string): Promise<BadgeType[]> {
+  const unlockedBadges: BadgeType[] = [];
 
   // Get user's existing badges
   const existingBadges = await prisma.badge.findMany({
@@ -194,7 +196,66 @@ export async function checkAndUnlockBadges(userId: string): Promise<string[]> {
     }
   }
 
+  const levelBadges: Array<{ level: CefrLevel; badge: BadgeType }> = [
+    { level: 'A1', badge: 'LEVEL_A1' },
+    { level: 'A2', badge: 'LEVEL_A2' },
+    { level: 'B1', badge: 'LEVEL_B1' },
+    { level: 'B2', badge: 'LEVEL_B2' },
+    { level: 'C1', badge: 'LEVEL_C1' },
+  ];
+
+  const validatedLevels = await getValidatedLevels(userId);
+  for (const item of levelBadges) {
+    if (!unlockedBadgeTypes.includes(item.badge) && validatedLevels.has(item.level)) {
+      if (await unlockBadge(userId, item.badge)) {
+        unlockedBadges.push(item.badge);
+      }
+    }
+  }
+
   return unlockedBadges;
+}
+
+async function getValidatedLevels(userId: string): Promise<Set<CefrLevel>> {
+  const modules = await prisma.module.findMany({
+    where: {
+      learningPlan: { userId },
+    },
+    include: {
+      exercises: {
+        where: { userId },
+        include: {
+          videoSubmissions: {
+            select: { status: true },
+          },
+        },
+      },
+    },
+    orderBy: { week: 'asc' },
+  });
+
+  const levels = new Set<CefrLevel>();
+  for (const moduleRecord of modules) {
+    const exercises = moduleRecord.exercises;
+    if (!exercises.length) continue;
+    const allExercisesCompleted = exercises.every((exercise) => exercise.completed);
+    const hasRejected = exercises.some((exercise) =>
+      exercise.videoSubmissions.some((video) => ['REJECTED', 'REVISION_NEEDED'].includes(video.status))
+    );
+    const oralExercises = exercises.filter((exercise) => exercise.exerciseType === 'SPEAKING');
+    const hasApprovedOral =
+      oralExercises.length > 0 &&
+      oralExercises.every((exercise) => exercise.videoSubmissions.some((video) => video.status === 'APPROVED'));
+    const globalScore = Math.round(
+      exercises.reduce((sum, exercise) => sum + (exercise.achievedScore || 0), 0) / exercises.length
+    );
+
+    if (allExercisesCompleted && hasApprovedOral && !hasRejected && globalScore >= 70) {
+      levels.add(levelByWeek(moduleRecord.week));
+    }
+  }
+
+  return levels;
 }
 
 /**

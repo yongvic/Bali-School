@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,8 +24,9 @@ import {
   Map,
   Sparkles,
   Settings,
-  Plane,
+  User,
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
@@ -46,7 +48,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     const confirmed = window.confirm('Merci pour votre effort aujourd’hui. Voulez-vous vraiment vous déconnecter ?');
     if (!confirmed) return;
-    await signOut({ redirect: true, redirectUrl: '/' });
+    await signOut({ redirect: true, callbackUrl: '/' });
   };
 
   const cards = [
@@ -56,6 +58,13 @@ export default function DashboardPage() {
       icon: ClipboardList,
       action: () => router.push('/learning-plan'),
       buttonText: 'Voir le plan',
+    },
+    {
+      title: 'Mon profil',
+      description: 'Modifiez votre nom et votre photo de profil',
+      icon: User,
+      action: () => router.push('/profile'),
+      buttonText: 'Gérer le profil',
     },
     {
       title: 'Commencer les exercices',
@@ -120,10 +129,15 @@ export default function DashboardPage() {
       <div className="border-b border-border bg-background sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Plane className="w-6 h-6 text-primary" />
-            <h1 className="text-2xl font-bold">Ravi&apos;s</h1>
+            <Image src="/logo.svg" alt="Ravi's" width={132} height={32} className="h-8 w-auto max-w-[132px] md:h-7 md:max-w-[122px]" priority />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <Avatar className="h-10 w-10 border">
+              <AvatarImage src={session.user.image || undefined} alt={session.user.name || 'Profil'} />
+              <AvatarFallback>
+                {session.user.name?.slice(0, 1).toUpperCase() || <User className="w-4 h-4" />}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <p className="text-sm text-muted-foreground">Bienvenue,</p>
               <p className="font-semibold">{session.user.name}</p>
@@ -162,6 +176,15 @@ export default function DashboardPage() {
                   <ChartColumnIncreasing className="w-4 h-4" />
                   {stats.badgesUnlocked} badges
                 </div>
+                {Array.isArray(stats.badges) &&
+                  stats.badges
+                    .filter((badge: string) => badge.startsWith('LEVEL_'))
+                    .map((levelBadge: string) => (
+                      <div key={levelBadge} className="px-4 py-2 rounded-full bg-indigo-500/10 text-indigo-700 font-semibold text-sm inline-flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4" />
+                        Badge {levelBadge.replace('LEVEL_', '')}
+                      </div>
+                    ))}
               </>
             )}
           </div>
@@ -214,15 +237,15 @@ export default function DashboardPage() {
           </div>
 
           {learningPlan && session.user.role === 'STUDENT' && (
-            <Card className="border-slate-800 bg-slate-900/70">
+            <Card className="border border-border bg-card">
               <CardHeader>
                 <CardTitle className="text-base">Votre plan personnalisé</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-muted-foreground">
                   Objectif 30 jours : {learningPlan.goals30?.[0] || 'Débuter forte'}
                 </p>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-muted-foreground">
                   Compétence prioritaire : {learningPlan.skillFocuses?.[0] || 'Communication professionnelle'}
                 </p>
                 <div className="flex gap-3">

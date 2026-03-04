@@ -2,6 +2,7 @@
 
 import { ReactNode, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { signOut, useSession } from 'next-auth/react';
@@ -10,7 +11,6 @@ import {
   Clapperboard,
   Users,
   BookOpen,
-  ShieldCheck,
   LogOut,
 } from 'lucide-react';
 
@@ -51,8 +51,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen">
         <aside className="w-72 border-r border-slate-900 bg-slate-900 px-6 py-8 flex flex-col">
           <Link href="/admin" className="flex items-center gap-2 text-xl font-semibold text-white">
-            <ShieldCheck className="h-5 w-5 text-cyan-400" />
-            <span>Admin Center</span>
+            <Image src="/logo.svg" alt="Ravi's Admin" width={122} height={30} className="h-7 w-auto max-w-[122px]" />
           </Link>
           <p className="text-xs uppercase tracking-[0.3em] text-slate-500 mt-2">Ravi&apos;s School</p>
 

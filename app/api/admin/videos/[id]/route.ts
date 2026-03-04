@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     
@@ -12,8 +12,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       );
     }
 
+    const { id } = await params;
     const video = await prisma.video.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         user: {
           select: { name: true },
@@ -50,7 +51,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
@@ -62,6 +63,7 @@ export async function PATCH(
       );
     }
 
+    const { id } = await params;
     const { status, feedback } = await req.json();
 
     if (!['APPROVED', 'REJECTED', 'REVISION_NEEDED'].includes(status)) {
@@ -73,7 +75,7 @@ export async function PATCH(
 
     // Update video status
     const video = await prisma.video.update({
-      where: { id: params.id },
+      where: { id },
       data: { status },
     });
 
@@ -129,9 +131,9 @@ export async function PATCH(
     // Create admin feedback
     if (feedback || status !== 'APPROVED') {
       await prisma.adminFeedback.upsert({
-        where: { videoId: params.id },
+        where: { videoId: id },
         create: {
-          videoId: params.id,
+          videoId: id,
           adminId: session.user.id,
           decision: status,
           textFeedback: feedback,

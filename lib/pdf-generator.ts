@@ -68,6 +68,12 @@ export function generateFallbackPlanPDF(data: PlanPDFData): Uint8Array {
 }
 
 export function createPlanHTML(data: PlanPDFData): string {
+  const goals30 = data.goals30 || [];
+  const goals60 = data.goals60 || [];
+  const goals90 = data.goals90 || [];
+  const skillFocuses = data.skillFocuses || [];
+  const exerciseSuggestions = data.exerciseSuggestions || [];
+
   return `
 <!DOCTYPE html>
 <html lang="fr">
@@ -250,17 +256,17 @@ export function createPlanHTML(data: PlanPDFData): string {
   <div class="section">
     <h2>Objectifs 30 / 60 / 90 jours</h2>
     <div class="goal-grid">
-      ${goalGridHTML('30 jours', data.goals30)}
-      ${goalGridHTML('60 jours', data.goals60)}
-      ${goalGridHTML('90 jours', data.goals90)}
+      ${goalGridHTML('30 jours', goals30)}
+      ${goalGridHTML('60 jours', goals60)}
+      ${goalGridHTML('90 jours', goals90)}
     </div>
     <h2>Compétences ciblées</h2>
     <div class="chips">
-      ${data.skillFocuses.map((skill) => `<span class="chip">${skill}</span>`).join('')}
+      ${skillFocuses.map((skill) => `<span class="chip">${skill}</span>`).join('')}
     </div>
     <h2>Exercices suggérés</h2>
     <div class="chips">
-      ${data.exerciseSuggestions.map((exercise) => `<span class="chip">${exercise}</span>`).join('')}
+      ${exerciseSuggestions.map((exercise) => `<span class="chip">${exercise}</span>`).join('')}
     </div>
   </div>
 

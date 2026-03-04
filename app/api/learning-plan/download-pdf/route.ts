@@ -9,7 +9,7 @@ export async function GET(_req: Request) {
   try {
     const session = await auth();
     
-    if (!session?.user?.id || !session.user.name) {
+    if (!session?.user?.id) {
       return Response.json(
         { message: 'Non autorisé' },
         { status: 401 }
@@ -40,24 +40,41 @@ export async function GET(_req: Request) {
 
     // Transform modules for PDF
     const planData: PlanPDFData = {
-      name: session.user.name,
+      name: session.user.name || 'Apprenant Ravi',
       level: onboarding?.englishLevel || 'Non défini',
       airport: onboarding?.airportName || onboarding?.airportCode || 'Non défini',
       professionGoal: onboarding?.professionGoal || 'Objectif professionnel à définir',
       dailyMinutes: onboarding?.dailyMinutes || 30,
       weeklyGoal: onboarding?.weeklyGoal || 5,
+      goals30: plan.goals30 || [],
+      goals60: plan.goals60 || [],
+      goals90: plan.goals90 || [],
+      weeklyObjectives: plan.weeklyObjectives || [],
+      skillFocuses: plan.skillFocuses || [],
+      exerciseSuggestions: plan.exerciseSuggestions || [],
       weeks: plan.modules.map(module => ({
         week: module.week,
         title: module.title,
         focus: [
+          plan.weeklyObjectives?.[module.week - 1],
+          plan.weeklyFocus?.[module.week - 1],
+          plan.exerciseSuggestions?.[0],
+          plan.skillFocuses?.[0],
+        ].filter((item): item is string => Boolean(item && item.trim())),
+        targetPoints: module.targetPoints,
+      })),
+    };
+
+    for (const week of planData.weeks) {
+      if (!week.focus.length) {
+        week.focus = [
           'Apprendre le vocabulaire et les phrases clés',
           'Travailler la prononciation',
           'Réaliser les exercices interactifs',
           'Gagner des points Kiki',
-        ],
-        targetPoints: module.targetPoints,
-      })),
-    };
+        ];
+      }
+    }
 
     const htmlContent = createPlanHTML(planData);
 
@@ -66,7 +83,8 @@ export async function GET(_req: Request) {
       return new Response(pdf, {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="learning-plan.pdf"',
+          'Content-Disposition': 'attachment; filename="plan-apprentissage-ravis.pdf"',
+          'Cache-Control': 'no-store',
         },
       });
     } catch (pdfError) {
@@ -75,7 +93,8 @@ export async function GET(_req: Request) {
       return new Response(fallbackPdf, {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="learning-plan.pdf"',
+          'Content-Disposition': 'attachment; filename="plan-apprentissage-ravis.pdf"',
+          'Cache-Control': 'no-store',
         },
       });
     }

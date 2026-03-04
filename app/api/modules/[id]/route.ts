@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { getAllowedLevelsForLearner, levelByWeek } from '@/lib/learning-content';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const { id: moduleId } = await params;
-    const module = await prisma.module.findUnique({
+    const moduleRecord = await prisma.module.findUnique({
       where: { id: moduleId },
       include: {
         learningPlan: {
@@ -39,7 +40,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
-    if (!module) {
+    if (!moduleRecord) {
       return Response.json(
         { message: 'Module introuvable' },
         { status: 404 }
@@ -47,18 +48,33 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // Check if user owns this module
-    if (module.learningPlan.userId !== session.user.id) {
+    if (moduleRecord.learningPlan.userId !== session.user.id) {
       return Response.json(
         { message: 'Non autorisé' },
         { status: 403 }
       );
     }
 
+    const onboarding = await prisma.onboarding.findUnique({
+      where: { userId: session.user.id },
+      select: { englishLevel: true },
+    });
+    const allowedLevels = getAllowedLevelsForLearner(onboarding?.englishLevel);
+    const cefrLevel = levelByWeek(moduleRecord.week);
+    if (!allowedLevels.includes(cefrLevel)) {
+      return Response.json(
+        {
+          message: `Module bloqué: niveau ${cefrLevel} supérieur au niveau autorisé.`,
+        },
+        { status: 423 }
+      );
+    }
+
     // Block access unless all previous modules are fully validated.
     const previousModules = await prisma.module.findMany({
       where: {
-        planId: module.planId,
-        week: { lt: module.week },
+        planId: moduleRecord.planId,
+        week: { lt: moduleRecord.week },
       },
       include: {
         exercises: {
@@ -93,9 +109,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       );
     }
 
-    const { learningPlan, ...moduleData } = module;
+    const { learningPlan, ...moduleData } = moduleRecord;
 
-    return Response.json(moduleData);
+    return Response.json({ ...moduleData, cefrLevel });
   } catch (error) {
     console.error('Module fetch error:', error);
     return Response.json(

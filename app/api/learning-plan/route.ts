@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
-import { createModuleBlueprint, levelByWeek, normalizeCefrLevel } from '@/lib/learning-content';
+import { normalizeCefrLevel } from '@/lib/learning-content';
+import { rebuildPlanModules } from '@/lib/module-generation';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
@@ -127,85 +128,4 @@ export async function PUT(req: Request) {
   }
 }
 
-async function rebuildPlanModules(planId: string, userId: string, englishLevel: string) {
-  await prisma.exercise.deleteMany({
-    where: { module: { planId } },
-  });
-  await prisma.module.deleteMany({
-    where: { planId },
-  });
-
-  const levelPointTarget = englishLevel.startsWith('A') ? 220 : englishLevel.startsWith('B') ? 280 : 340;
-  const topics = [
-    'passenger service',
-    'accent clarity',
-    'unexpected situations',
-    'professional communication',
-    'safety and urgency',
-    'interview preparation',
-    'lost passenger assistance',
-  ];
-
-  for (let week = 1; week <= 12; week++) {
-    const cefrLevel = levelByWeek(week);
-    const topic = topics[(week - 1) % topics.length];
-    const blueprint = createModuleBlueprint(cefrLevel, topic);
-    const module = await prisma.module.create({
-      data: {
-        planId,
-        week,
-        title: `Semaine ${week} - Niveau ${cefrLevel}`,
-        description: `Module ${cefrLevel} structuré: découverte, pratique contrôlée, semi-guidée, oral final et évaluation.`,
-        targetPoints: levelPointTarget,
-      },
-    });
-
-    let orderIndex = 1;
-    for (const ex of blueprint.exercises) {
-      await prisma.exercise.create({
-        data: {
-          userId,
-          moduleId: module.id,
-          mode: ex.exerciseType === 'speaking' ? 'ROLE_PLAY' : 'CUSTOM',
-          exerciseType: mapExerciseType(ex.exerciseType),
-          skill: ex.skill || 'READING',
-          phase: ex.phase || 'PRACTICE_CONTROLLED',
-          orderIndex,
-          title:
-            ex.exerciseType === 'speaking'
-              ? 'Production orale de fin de module'
-              : `${(ex.exerciseType || 'multiple_choice').replace('_', ' ')} - ${topic}`,
-          description: ex.explanation || `Exercice ${ex.exerciseType || 'multiple_choice'} pour ${topic}`,
-          content: JSON.stringify({
-            ...blueprint,
-            currentExercise: ex,
-          }),
-          pointsValue: ex.phase === 'ORAL_PRODUCTION' ? 20 : ex.phase === 'FINAL_EVALUATION' ? 5 : 10,
-        },
-      });
-      orderIndex += 1;
-    }
-  }
-}
-
-function mapExerciseType(type?: string) {
-  switch (type) {
-    case 'multiple_choice':
-      return 'MULTIPLE_CHOICE' as const;
-    case 'fill_blank':
-      return 'FILL_BLANK' as const;
-    case 'drag_drop':
-      return 'DRAG_DROP' as const;
-    case 'matching':
-      return 'MATCHING' as const;
-    case 'listening':
-      return 'LISTENING' as const;
-    case 'writing':
-      return 'WRITING' as const;
-    case 'speaking':
-      return 'SPEAKING' as const;
-    default:
-      return 'MULTIPLE_CHOICE' as const;
-  }
-}
 

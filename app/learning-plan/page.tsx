@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Download, Calendar, Target, Layers, Rocket } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { levelByWeek } from '@/lib/learning-content';
 
 interface Module {
   week: number;
@@ -110,6 +111,9 @@ export default function LearningPlanPage() {
 
       const blob = await response.blob();
       const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      if (!contentType.includes('application/pdf') || blob.size === 0) {
+        throw new Error('Le document généré est invalide.');
+      }
       const disposition = response.headers.get('content-disposition') || '';
       const fileNameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
       const fileName = fileNameMatch?.[1] || (contentType.includes('pdf') ? 'plan-apprentissage.pdf' : 'plan-apprentissage.html');
@@ -281,11 +285,11 @@ export default function LearningPlanPage() {
                 { label: '60 jours', goals: plan.goals60 || [] },
                 { label: '90 jours', goals: plan.goals90 || [] },
               ].map((group) => (
-                <Card key={group.label} className="bg-slate-900 border border-slate-800">
+                <Card key={group.label} className="bg-card border border-border">
                   <CardHeader>
                     <CardTitle>{group.label}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-slate-300">
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
                     {group.goals.map((goal, index) => (
                       <p key={`${group.label}-${index}`} className="leading-relaxed">
                         {goal}
@@ -300,13 +304,13 @@ export default function LearningPlanPage() {
           <div className="space-y-4">
             <h3 className="text-2xl font-semibold">Objectifs hebdomadaires</h3>
             <p className="text-sm text-muted-foreground">La direction de chaque semaine</p>
-            <Card className="border border-slate-800 bg-slate-950/30">
+            <Card className="border border-border bg-card/80">
               <CardContent>
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   {(plan.weeklyObjectives || []).map((objective, index) => (
-                    <li key={objective} className="rounded-md border border-slate-800 p-3 text-slate-200">
-                      <span className="font-semibold text-white">Semaine {index + 1} :</span>
-                      <p className="text-xs text-slate-400 mt-1">{objective}</p>
+                    <li key={objective} className="rounded-md border border-border p-3">
+                      <span className="font-semibold text-foreground">Semaine {index + 1} :</span>
+                      <p className="text-xs text-muted-foreground mt-1">{objective}</p>
                     </li>
                   ))}
                 </ul>
@@ -315,25 +319,25 @@ export default function LearningPlanPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border border-slate-800 bg-slate-950/30">
+            <Card className="border border-border bg-card/80">
               <CardHeader>
                 <CardTitle>Compétences à maîtriser</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-200">
+              <CardContent className="space-y-2 text-sm text-foreground">
                 {(plan.skillFocuses || []).map((skill) => (
-                  <div key={skill} className="rounded-md border border-slate-800 px-3 py-2">
+                  <div key={skill} className="rounded-md border border-border bg-background px-3 py-2">
                     {skill}
                   </div>
                 ))}
               </CardContent>
             </Card>
-            <Card className="border border-slate-800 bg-slate-950/30">
+            <Card className="border border-border bg-card/80">
               <CardHeader>
                 <CardTitle>Exercices adaptés</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm text-slate-200">
+              <CardContent className="space-y-2 text-sm text-foreground">
                 {(plan.exerciseSuggestions || []).map((exercise) => (
-                  <div key={exercise} className="rounded-md border border-slate-800 px-3 py-2">
+                  <div key={exercise} className="rounded-md border border-border bg-background px-3 py-2">
                     {exercise}
                   </div>
                 ))}
@@ -357,7 +361,12 @@ export default function LearningPlanPage() {
                   .map((module) => (
                     <Card key={module.week}>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Semaine {module.week}</CardTitle>
+                        <CardTitle className="text-base flex items-center justify-between gap-2">
+                          <span>Semaine {module.week}</span>
+                          <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
+                            {levelByWeek(module.week)}
+                          </span>
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <p className="text-sm font-medium text-foreground">{module.title}</p>

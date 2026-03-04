@@ -1,15 +1,16 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== 'ADMIN') {
       return Response.json({ message: 'Non autorisé' }, { status: 403 });
     }
 
+    const { id } = await params;
     const student = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         name: true,
@@ -31,10 +32,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     }
 
     const [exerciseCount, videoCount, approvedCount, points] = await Promise.all([
-      prisma.exercise.count({ where: { userId: params.id, completed: true } }),
-      prisma.video.count({ where: { userId: params.id } }),
-      prisma.video.count({ where: { userId: params.id, status: 'APPROVED' } }),
-      prisma.kikiPoints.findUnique({ where: { userId: params.id }, select: { totalPoints: true } }),
+      prisma.exercise.count({ where: { userId: id, completed: true } }),
+      prisma.video.count({ where: { userId: id } }),
+      prisma.video.count({ where: { userId: id, status: 'APPROVED' } }),
+      prisma.kikiPoints.findUnique({ where: { userId: id }, select: { totalPoints: true } }),
     ]);
 
     return Response.json({
