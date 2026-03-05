@@ -50,6 +50,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   };
 
   const closeMenu = () => setIsMobileMenuOpen(false);
+  const getLogoutCallbackUrl = () => {
+    if (typeof window === 'undefined') return '/';
+    return new URL('/', window.location.origin).toString();
+  };
 
   const renderSidebarContent = (mobile = false) => (
     <>
@@ -93,7 +97,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           variant="outline"
           size="sm"
           className="w-full gap-2"
-          onClick={() => signOut({ redirect: true, callbackUrl: '/' })}
+          onClick={() => signOut({ redirect: true, callbackUrl: getLogoutCallbackUrl() })}
         >
           <LogOut className="h-4 w-4" />
           Déconnexion

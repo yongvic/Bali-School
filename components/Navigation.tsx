@@ -20,7 +20,12 @@ export function Navigation() {
   }
 
   // Avoid duplicate headers on pages that already render a dedicated top bar.
-  if (pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/admin') ||
+    pathname === '/learning-plan/print'
+  ) {
     return null;
   }
 
@@ -42,6 +47,10 @@ export function Navigation() {
   ];
 
   const links = session.user.role === 'ADMIN' ? adminLinks : studentLinks;
+  const getLogoutCallbackUrl = () => {
+    if (typeof window === 'undefined') return '/';
+    return new URL('/', window.location.origin).toString();
+  };
 
   return (
     <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 sticky top-0 z-40">
@@ -98,7 +107,7 @@ export function Navigation() {
             onClick={() => {
               const confirmed = window.confirm('Avant de partir, souhaitez-vous vraiment vous déconnecter maintenant ?');
               if (!confirmed) return;
-              signOut({ redirect: true, callbackUrl: '/' });
+              signOut({ redirect: true, callbackUrl: getLogoutCallbackUrl() });
             }}
           >
             Déconnexion
@@ -138,7 +147,7 @@ export function Navigation() {
               onClick={() => {
                 const confirmed = window.confirm('Avant de partir, souhaitez-vous vraiment vous déconnecter maintenant ?');
                 if (!confirmed) return;
-                signOut({ redirect: true, callbackUrl: '/' });
+                signOut({ redirect: true, callbackUrl: getLogoutCallbackUrl() });
               }}
             >
               <LogOut className="h-4 w-4" />
@@ -150,5 +159,4 @@ export function Navigation() {
     </nav>
   );
 }
-
 
