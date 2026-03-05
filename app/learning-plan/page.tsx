@@ -38,7 +38,8 @@ export default function LearningPlanPage() {
   const router = useRouter();
   const [plan, setPlan] = useState<LearningPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDownloading, setIsDownloading] = useState(false);
+  // isDownloading kept for API compatibility but unused now
+  const [isDownloading] = useState(false);
   const [justGenerated, setJustGenerated] = useState(false);
   const [levelToApply, setLevelToApply] = useState('B1');
   const [focusInput, setFocusInput] = useState('');
@@ -100,40 +101,9 @@ export default function LearningPlanPage() {
     fetchPlan();
   }, [session?.user?.id, status, router]);
 
-  const handleDownloadPDF = async () => {
-    setIsDownloading(true);
-    try {
-      const response = await fetch('/api/learning-plan/download-pdf');
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.message || 'Échec du téléchargement PDF');
-      }
-
-      const blob = await response.blob();
-      const contentType = response.headers.get('content-type') || 'application/octet-stream';
-      if (!contentType.includes('application/pdf') || blob.size === 0) {
-        throw new Error('Le document généré est invalide.');
-      }
-      const disposition = response.headers.get('content-disposition') || '';
-      const fileNameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
-      const fileName = fileNameMatch?.[1] || (contentType.includes('pdf') ? 'plan-apprentissage.pdf' : 'plan-apprentissage.html');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success('Plan téléchargé avec succès');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Impossible de télécharger le PDF';
-      toast.error(message);
-      console.error(error);
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleDownloadPDF = () => {
+    // Open the print page in a new tab — the browser handles PDF generation natively
+    window.open('/learning-plan/print', '_blank');
   };
 
   const handleUpdatePlan = async () => {
@@ -396,58 +366,58 @@ export default function LearningPlanPage() {
           </CardContent>
         </Card>
 
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Modifier mon plan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">Vous pouvez ajuster le niveau et les axes hebdomadaires sans refaire l&apos;onboarding.</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Input value={levelToApply} onChange={(event) => setLevelToApply(event.target.value.toUpperCase())} placeholder="Niveau (A1-C1)" />
-                <Input
-                  className="md:col-span-2"
-                  value={focusInput}
-                  onChange={(event) => setFocusInput(event.target.value)}
-                  placeholder="Axes hebdomadaires séparés par des virgules"
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Modifier mon plan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Vous pouvez ajuster le niveau et les axes hebdomadaires sans refaire l&apos;onboarding.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input value={levelToApply} onChange={(event) => setLevelToApply(event.target.value.toUpperCase())} placeholder="Niveau (A1-C1)" />
+              <Input
+                className="md:col-span-2"
+                value={focusInput}
+                onChange={(event) => setFocusInput(event.target.value)}
+                placeholder="Axes hebdomadaires séparés par des virgules"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-1">
+                <Label>Objectifs hebdomadaires (une ligne = une semaine)</Label>
+                <textarea
+                  value={weeklyObjectivesInput}
+                  onChange={(event) => setWeeklyObjectivesInput(event.target.value)}
+                  className="w-full resize-y p-2 border border-border rounded-md bg-background"
+                  rows={4}
+                  placeholder="Semaine 1 : ...&#10;Semaine 2 : ..."
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3">
-                <div className="space-y-1">
-                  <Label>Objectifs hebdomadaires (une ligne = une semaine)</Label>
-                  <textarea
-                    value={weeklyObjectivesInput}
-                    onChange={(event) => setWeeklyObjectivesInput(event.target.value)}
-                    className="w-full resize-y p-2 border border-border rounded-md bg-background"
-                    rows={4}
-                    placeholder="Semaine 1 : ...&#10;Semaine 2 : ..."
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Compétences à renforcer (ligne par compétence)</Label>
-                  <textarea
-                    value={skillFocusesInput}
-                    onChange={(event) => setSkillFocusesInput(event.target.value)}
-                    className="w-full resize-y p-2 border border-border rounded-md bg-background"
-                    rows={3}
-                    placeholder="Prononciation claire&#10;Vocabulaire cabine"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Exercices suggérés (une ligne par exercice)</Label>
-                  <textarea
-                    value={exerciseSuggestionsInput}
-                    onChange={(event) => setExerciseSuggestionsInput(event.target.value)}
-                    className="w-full resize-y p-2 border border-border rounded-md bg-background"
-                    rows={3}
-                    placeholder="Réponses rapides sur les procédures&#10;Vidéo de 1min"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label>Compétences à renforcer (ligne par compétence)</Label>
+                <textarea
+                  value={skillFocusesInput}
+                  onChange={(event) => setSkillFocusesInput(event.target.value)}
+                  className="w-full resize-y p-2 border border-border rounded-md bg-background"
+                  rows={3}
+                  placeholder="Prononciation claire&#10;Vocabulaire cabine"
+                />
               </div>
-              <Button onClick={handleUpdatePlan} disabled={isUpdatingPlan}>
-                {isUpdatingPlan ? 'Mise à jour...' : 'Mettre à jour le plan'}
-              </Button>
-            </CardContent>
-          </Card>
+              <div className="space-y-1">
+                <Label>Exercices suggérés (une ligne par exercice)</Label>
+                <textarea
+                  value={exerciseSuggestionsInput}
+                  onChange={(event) => setExerciseSuggestionsInput(event.target.value)}
+                  className="w-full resize-y p-2 border border-border rounded-md bg-background"
+                  rows={3}
+                  placeholder="Réponses rapides sur les procédures&#10;Vidéo de 1min"
+                />
+              </div>
+            </div>
+            <Button onClick={handleUpdatePlan} disabled={isUpdatingPlan}>
+              {isUpdatingPlan ? 'Mise à jour...' : 'Mettre à jour le plan'}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
