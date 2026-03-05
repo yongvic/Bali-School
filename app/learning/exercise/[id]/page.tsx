@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { VideoUploadSection } from '@/components/learning/VideoUploadSection';
 import { toast } from 'sonner';
-import { parseStructuredContent, type StructuredExercise } from '@/lib/learning-content';
+import { parseStructuredContent, type StructuredExercise, computeOralScore } from '@/lib/learning-content';
 
 interface Exercise {
   id: string;
@@ -24,77 +23,93 @@ interface Exercise {
   achievedScore: number;
 }
 
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
 const exerciseModeGuides: Record<string, { title: string; instructions: string[] }> = {
   PASSENGER: {
-    title: 'Passenger Service',
+    title: 'Service passager',
     instructions: [
-      'Read the passenger request in English.',
-      'Record your response in English with a professional tone.',
-      'Use cabin-service vocabulary.',
-      'Keep your message clear and structured.',
+      'Lisez la demande du passager.',
+      'Répondez en anglais avec un ton professionnel.',
+      'Utilisez du vocabulaire cabine adapté.',
+      'Structurez votre message en phrases courtes et claires.',
     ],
   },
   ACCENT_TRAINING: {
-    title: 'Accent Training',
+    title: 'Entraînement accent',
     instructions: [
-      'Listen to the model phrase.',
-      'Record yourself repeating it clearly.',
-      'Focus on stress and rhythm.',
-      'Aim for intelligibility, not imitation.',
+      'Écoutez la phrase modèle.',
+      'Répétez-la distinctement.',
+      'Travaillez le rythme et l’intonation.',
+      'Visez la clarté avant tout.',
     ],
   },
   SECRET_CHALLENGE: {
-    title: 'Secret Challenge',
+    title: 'Défi surprise',
     instructions: [
-      'Read the random scenario in English.',
-      'Respond naturally with confidence.',
-      'Stay polite and solution-oriented.',
-      'Use professional expressions.',
+      'Lisez le scénario affiché.',
+      'Répondez de façon naturelle.',
+      'Restez poli et orienté solution.',
+      'Employez des formulations professionnelles.',
     ],
   },
   WHEEL_OF_ENGLISH: {
-    title: 'Wheel of English',
+    title: "Roue d'anglais",
     instructions: [
-      'A random topic is selected.',
-      'Speak for 60-120 seconds in English.',
-      'Use aviation context when possible.',
-      'Organize your response in short points.',
+      'Le sujet est tiré aléatoirement.',
+      'Parlez 60 à 120 secondes.',
+      'Restez dans le contexte aérien.',
+      'Présentez votre réponse en 2-3 idées.',
     ],
   },
   ROLE_PLAY: {
-    title: 'Role Play',
+    title: 'Jeu de rôle',
     instructions: [
-      'Follow the dialogue scenario in English.',
-      'Play your role with realistic phrasing.',
-      'Handle objections politely.',
-      'Close the interaction professionally.',
+      'Suivez la situation proposée.',
+      'Tenez votre rôle avec un langage crédible.',
+      'Gérez les objections avec calme.',
+      'Terminez la conversation proprement.',
     ],
   },
   LISTENING: {
-    title: 'Listening',
+    title: 'Compréhension orale',
     instructions: [
-      'Listen attentively to the prompt.',
-      'Extract key details.',
-      'Answer in concise English.',
-      'Re-check your response before submit.',
+      'Écoutez le contenu attentivement.',
+      'Identifiez les informations clés.',
+      'Répondez en anglais de manière concise.',
+      'Relisez votre réponse avant validation.',
     ],
   },
   EMERGENCY: {
-    title: 'Emergency Mode',
+    title: 'Mode urgence',
     instructions: [
-      'Use exact safety wording.',
-      'Speak slowly and clearly.',
-      'Maintain authoritative tone.',
-      'Avoid slang and ambiguity.',
+      'Utilisez les formules de sécurité exactes.',
+      'Parlez lentement et clairement.',
+      'Gardez un ton ferme et professionnel.',
+      'Évitez les expressions ambiguës.',
     ],
   },
   CUSTOM: {
-    title: 'Custom Exercise',
+    title: 'Exercice personnalisé',
     instructions: [
-      'Read the prompt carefully.',
-      'Record a structured response in English.',
-      'Keep answer relevant to scenario.',
-      'Use professional vocabulary.',
+      'Lisez la consigne en entier.',
+      'Répondez de manière structurée.',
+      'Restez aligné avec le scénario.',
+      'Utilisez un anglais professionnel.',
     ],
   },
 };
@@ -108,8 +123,22 @@ export default function ExercisePage() {
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [answer, setAnswer] = useState('');
+  const [matchAnswers, setMatchAnswers] = useState<Record<string, string>>({});
   const [correction, setCorrection] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [isAudioRecording, setIsAudioRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [oralTranscript, setOralTranscript] = useState('');
+  const [oralScore, setOralScore] = useState<number | null>(null);
+  const [oralFeedback, setOralFeedback] = useState('');
+  const [submittingAudio, setSubmittingAudio] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -120,7 +149,7 @@ export default function ExercisePage() {
       try {
         const response = await fetch(`/api/exercises/${exerciseId}`);
         if (!response.ok) {
-          throw new Error('Échec de récupération de l\'exercice');
+          throw new Error("Échec de récupération de l'exercice");
         }
         const data = await response.json();
         setExercise(data);
@@ -134,6 +163,14 @@ export default function ExercisePage() {
 
     fetchExercise();
   }, [exerciseId]);
+
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      recognitionRef.current?.stop();
+    };
+  }, [audioUrl]);
 
   if (isLoading) {
     return (
@@ -167,24 +204,52 @@ export default function ExercisePage() {
   const structured = parseStructuredContent(exercise.content);
   let currentExerciseFromContent: StructuredExercise | null = null;
   try {
-    const parsed = JSON.parse(exercise.content || '{}');
-    currentExerciseFromContent = (parsed?.currentExercise as StructuredExercise | undefined) || null;
+    const parsed = JSON.parse(exercise.content || '{}') as { currentExercise?: StructuredExercise };
+    currentExerciseFromContent = parsed?.currentExercise || null;
   } catch {
     currentExerciseFromContent = null;
   }
-  const interactiveExercise: StructuredExercise | null =
-    currentExerciseFromContent || structured?.exercises?.[0] || null;
+  const interactiveExercise: StructuredExercise | null = currentExerciseFromContent || structured?.exercises?.[0] || null;
+  const expectedPhrase = extractExpectedPhrase(interactiveExercise?.prompt || exercise.content);
+  const isMatchPairsExercise =
+    interactiveExercise?.kind === 'match_pairs' &&
+    interactiveExercise.answer &&
+    typeof interactiveExercise.answer === 'object' &&
+    !Array.isArray(interactiveExercise.answer);
+  const canSubmitInteractive = isMatchPairsExercise ? true : answer.trim().length > 0;
 
   const validateInteractive = async () => {
     if (!interactiveExercise) return;
-    const expected =
-      typeof interactiveExercise.answer === 'string'
-        ? interactiveExercise.answer.toLowerCase()
-        : Array.isArray(interactiveExercise.answer)
-          ? interactiveExercise.answer.join(' ').toLowerCase()
-          : JSON.stringify(interactiveExercise.answer).toLowerCase();
+    let isCorrect = false;
 
-    const isCorrect = answer.trim().toLowerCase() === expected || answer.trim().toLowerCase().includes(expected);
+    if (
+      interactiveExercise.kind === 'match_pairs' &&
+      interactiveExercise.answer &&
+      typeof interactiveExercise.answer === 'object' &&
+      !Array.isArray(interactiveExercise.answer)
+    ) {
+      const expectedPairs = interactiveExercise.answer as Record<string, string>;
+      const allKeys = Object.keys(expectedPairs);
+      const allAnswered = allKeys.every((key) => Boolean(matchAnswers[key]));
+      if (!allAnswered) {
+        toast.error('Associez tous les mots avant de valider.');
+        return;
+      }
+      isCorrect = allKeys.every((key) => {
+        const picked = (matchAnswers[key] || '').trim().toLowerCase();
+        const expected = (expectedPairs[key] || '').trim().toLowerCase();
+        return picked === expected;
+      });
+    } else {
+      const expected =
+        typeof interactiveExercise.answer === 'string'
+          ? interactiveExercise.answer.toLowerCase()
+          : Array.isArray(interactiveExercise.answer)
+            ? interactiveExercise.answer.join(' ').toLowerCase()
+            : JSON.stringify(interactiveExercise.answer).toLowerCase();
+      isCorrect = answer.trim().toLowerCase() === expected || answer.trim().toLowerCase().includes(expected);
+    }
+
     setCorrection(
       isCorrect
         ? `Bonne réponse. ${interactiveExercise.explanation || ''}`
@@ -198,22 +263,124 @@ export default function ExercisePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           exerciseId: exercise.id,
-          points: isCorrect ? exercise.pointsValue : Math.max(5, Math.round(exercise.pointsValue * 0.2)),
-          mode: exercise.mode.toLowerCase(),
-          exerciseType: exercise.exerciseType.toLowerCase(),
-          skill: exercise.skill,
           achievedScore: isCorrect ? 100 : 45,
           title: exercise.title,
           content: exercise.content,
         }),
       });
       if (!response.ok) throw new Error('Échec de validation');
+      setExercise((prev) => (prev ? { ...prev, completed: true, achievedScore: isCorrect ? 100 : 45 } : prev));
       toast.success('Exercice validé.');
     } catch (error) {
       toast.error('Impossible de valider cet exercice');
       console.error(error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const recorder = new MediaRecorder(stream);
+      streamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+      setOralTranscript('');
+      setOralScore(null);
+      setOralFeedback('');
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        setAudioUrl(URL.createObjectURL(blob));
+      };
+
+      const recognitionHost = window as unknown as {
+        SpeechRecognition?: SpeechRecognitionCtor;
+        webkitSpeechRecognition?: SpeechRecognitionCtor;
+      };
+      const SpeechRecognitionConstructor = recognitionHost.SpeechRecognition || recognitionHost.webkitSpeechRecognition;
+      if (SpeechRecognitionConstructor) {
+        const recognition = new SpeechRecognitionConstructor();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onresult = (event) => {
+          const value = event.results?.[0]?.[0]?.transcript || '';
+          setOralTranscript(value);
+          const result = computeOralScore(value, expectedPhrase);
+          setOralScore(result.score);
+          setOralFeedback(result.feedback);
+        };
+        recognition.onerror = () => {
+          toast.error('Transcription indisponible pour cet essai.');
+        };
+        recognitionRef.current = recognition;
+        recognition.start();
+      } else {
+        toast.info('Transcription automatique non disponible sur ce navigateur.');
+      }
+
+      recorder.start();
+      setIsAudioRecording(true);
+      toast.success('Enregistrement audio démarré.');
+    } catch (error) {
+      toast.error("Impossible d'accéder au micro.");
+      console.error(error);
+    }
+  };
+
+  const stopAudioRecording = () => {
+    if (!isAudioRecording) return;
+    mediaRecorderRef.current?.stop();
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    recognitionRef.current?.stop();
+    setIsAudioRecording(false);
+
+    if (!oralTranscript) {
+      const result = computeOralScore('', expectedPhrase);
+      setOralScore(result.score);
+      setOralFeedback('Aucune transcription détectée. Vous pouvez réessayer pour améliorer la note.');
+    }
+  };
+
+  const submitAudioAnswer = async () => {
+    if (!audioBlob) {
+      toast.error('Enregistrez une note vocale avant validation.');
+      return;
+    }
+
+    setSubmittingAudio(true);
+    try {
+      const score = oralScore ?? 70;
+      const response = await fetch('/api/exercises/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exerciseId: exercise.id,
+          content: interactiveExercise?.prompt || exercise.content,
+          transcript: oralTranscript,
+          expectedPhrase,
+          oralScore: score,
+          oralFeedback,
+          achievedScore: score,
+          title: exercise.title,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Échec de validation orale');
+      setExercise((prev) => (prev ? { ...prev, completed: true, achievedScore: score } : prev));
+      toast.success(`Note vocale validée (+${exercise.pointsValue} points).`);
+    } catch (error) {
+      toast.error('Impossible de valider la note vocale');
+      console.error(error);
+    } finally {
+      setSubmittingAudio(false);
     }
   };
 
@@ -228,13 +395,18 @@ export default function ExercisePage() {
           <p className="page-subtitle break-words sm:text-lg">
             Compétence: {exercise.skill} - Type: {exercise.exerciseType}
           </p>
+          {exercise.completed && (
+            <p className="text-sm mt-2 text-green-600 dark:text-green-400">
+              Exercice déjà validé (score: {exercise.achievedScore}/100)
+            </p>
+          )}
         </div>
 
         <Tabs defaultValue="instructions" className="space-y-6">
           <TabsList className={`grid h-auto w-full ${isOralExercise ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="instructions" className="text-xs sm:text-sm px-2">Consignes</TabsTrigger>
             <TabsTrigger value="scenario" className="text-xs sm:text-sm px-2">Scénario</TabsTrigger>
-            {isOralExercise && <TabsTrigger value="record" className="text-xs sm:text-sm px-2">Enregistrer</TabsTrigger>}
+            {isOralExercise && <TabsTrigger value="audio" className="text-xs sm:text-sm px-2">Note vocale</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="instructions" className="space-y-4">
@@ -256,7 +428,7 @@ export default function ExercisePage() {
 
                 <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20 mt-6">
                   <p className="text-sm text-blue-700 dark:text-blue-400">
-                    Conseil: répondez de manière claire, polie et structurée en anglais.
+                    Conseil: privilégiez des phrases courtes, polies et adaptées à la situation cabine.
                   </p>
                 </div>
               </CardContent>
@@ -266,7 +438,7 @@ export default function ExercisePage() {
           <TabsContent value="scenario" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Scénario (EN)</CardTitle>
+                <CardTitle>Scénario</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -277,7 +449,7 @@ export default function ExercisePage() {
 
                 <div className="mt-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
                   <p className="text-sm text-amber-700 dark:text-amber-400">
-                    Rappelez-vous: l&apos;objectif est la qualité de communication professionnelle.
+                    Objectif: communiquer de façon professionnelle et compréhensible.
                   </p>
                 </div>
 
@@ -287,23 +459,65 @@ export default function ExercisePage() {
                     {interactiveExercise ? (
                       <div className="space-y-3">
                         <p className="text-sm break-words">{interactiveExercise.prompt}</p>
-                        {interactiveExercise.options && (
-                          <p className="text-xs text-muted-foreground break-words">Options: {interactiveExercise.options.join(' | ')}</p>
+                        {interactiveExercise.kind === 'match_pairs' &&
+                        interactiveExercise.answer &&
+                        typeof interactiveExercise.answer === 'object' &&
+                        !Array.isArray(interactiveExercise.answer) ? (
+                          <div className="space-y-3">
+                            <p className="text-xs text-muted-foreground">Associez chaque mot anglais à sa traduction française.</p>
+                            {Object.entries(interactiveExercise.answer as Record<string, string>).map(([englishWord], index) => {
+                              const allTranslations = Object.values(interactiveExercise.answer as Record<string, string>);
+                              return (
+                                <div key={englishWord} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2 rounded-md border p-3">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Mot {index + 1}</p>
+                                    <p className="font-medium">{englishWord}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Traduction</p>
+                                    <select
+                                      className="w-full border rounded-md p-2 text-sm bg-background"
+                                      value={matchAnswers[englishWord] || ''}
+                                      onChange={(event) =>
+                                        setMatchAnswers((prev) => ({
+                                          ...prev,
+                                          [englishWord]: event.target.value,
+                                        }))
+                                      }
+                                    >
+                                      <option value="">Choisir une traduction</option>
+                                      {allTranslations.map((translation) => (
+                                        <option key={`${englishWord}-${translation}`} value={translation}>
+                                          {translation}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <>
+                            {interactiveExercise.options && (
+                              <p className="text-xs text-muted-foreground break-words">Options: {interactiveExercise.options.join(' | ')}</p>
+                            )}
+                            <input
+                              className="w-full border rounded-md p-2 text-sm"
+                              value={answer}
+                              onChange={(event) => setAnswer(event.target.value)}
+                              placeholder="Votre réponse"
+                            />
+                          </>
                         )}
-                        <input
-                          className="w-full border rounded-md p-2 text-sm"
-                          value={answer}
-                          onChange={(event) => setAnswer(event.target.value)}
-                          placeholder="Votre réponse"
-                        />
-                        <Button onClick={validateInteractive} disabled={submitting || !answer.trim()} className="w-full sm:w-auto">
+                        <Button onClick={validateInteractive} disabled={submitting || !canSubmitInteractive} className="w-full sm:w-auto">
                           {submitting ? 'Validation...' : `Valider (+${exercise.pointsValue} pts)`}
                         </Button>
                         {correction && <p className="text-sm text-muted-foreground">{correction}</p>}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Ce scénario n&apos;a pas de question interactive structurée. Utilisez le module pour la partie pratique.
+                        Ce scénario n&apos;a pas de question interactive structurée.
                       </p>
                     )}
                   </div>
@@ -312,15 +526,50 @@ export default function ExercisePage() {
             </Card>
           </TabsContent>
 
-          {isOralExercise && <TabsContent value="record" className="space-y-4">
-            <div className="mb-4">
-              <p className="text-lg font-semibold mb-2">Enregistrer votre réponse</p>
-              <p className="text-muted-foreground">{exercise.pointsValue} points Kiki pour cette validation</p>
-            </div>
-            <VideoUploadSection exerciseId={exerciseId} />
-          </TabsContent>}
+          {isOralExercise && (
+            <TabsContent value="audio" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Production orale: note vocale</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Enregistrez votre réponse avec le micro, puis validez pour compléter l&apos;exercice.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button onClick={isAudioRecording ? stopAudioRecording : startAudioRecording} variant={isAudioRecording ? 'destructive' : 'default'}>
+                      {isAudioRecording ? "Arrêter l'enregistrement" : 'Démarrer la note vocale'}
+                    </Button>
+                    <Button onClick={submitAudioAnswer} disabled={submittingAudio || !audioBlob || exercise.completed} variant="outline">
+                      {submittingAudio ? 'Validation...' : `Valider la note (+${exercise.pointsValue} pts)`}
+                    </Button>
+                  </div>
+
+                  {audioUrl && (
+                    <audio controls className="w-full">
+                      <source src={audioUrl} type="audio/webm" />
+                    </audio>
+                  )}
+
+                  <div className="space-y-2 rounded-md border p-3">
+                    <p className="text-sm"><strong>Phrase attendue:</strong> {expectedPhrase}</p>
+                    <p className="text-sm"><strong>Transcription:</strong> {oralTranscript || 'Aucune transcription détectée.'}</p>
+                    {oralScore !== null && (
+                      <p className="text-sm"><strong>Score oral:</strong> {oralScore}/100 - {oralFeedback}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
   );
+}
+
+function extractExpectedPhrase(prompt: string): string {
+  const quoted = prompt.match(/"([^"]+)"/);
+  if (quoted?.[1]) return quoted[1];
+  return prompt;
 }

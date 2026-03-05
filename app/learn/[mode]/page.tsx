@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { redirect, useParams } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -156,6 +156,28 @@ export default function LearnModePage() {
   }
 
   const exercise = exerciseContent[mode];
+  const totalScenarios = exercise?.scenarios.length ?? 0;
+  const storageKey = `learn-mode-progress:${mode}`;
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !exercise || totalScenarios <= 0) return;
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as { currentScenarioIndex?: number };
+      if (typeof parsed.currentScenarioIndex === 'number') {
+        setCurrentScenarioIndex(Math.max(0, Math.min(totalScenarios - 1, parsed.currentScenarioIndex)));
+      }
+    } catch {
+      // Ignore malformed local value.
+    }
+  }, [exercise, totalScenarios, storageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !exercise) return;
+    window.localStorage.setItem(storageKey, JSON.stringify({ currentScenarioIndex }));
+  }, [currentScenarioIndex, exercise, storageKey]);
+
   if (!exercise) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
@@ -175,7 +197,6 @@ export default function LearnModePage() {
   }
 
   const scenario = exercise.scenarios[currentScenarioIndex];
-  const totalScenarios = exercise.scenarios.length;
   const progress = ((currentScenarioIndex + 1) / totalScenarios) * 100;
 
   const expectedPhrase = scenario.pronunciationWord || extractExpectedPhrase(scenario.prompt);
@@ -282,6 +303,9 @@ export default function LearnModePage() {
         setOralFeedback('');
       } else {
         toast.success('Exercice terminé.');
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(storageKey);
+        }
       }
     } catch (error) {
       toast.error('Impossible de soumettre cet exercice');

@@ -29,8 +29,8 @@ export async function generatePlanPDF(htmlContent: string): Promise<Buffer> {
   try {
     const launchArgs: Parameters<typeof puppeteer.launch>[0] = {
       headless: true,
-      timeout: 60000,
-      defaultViewport: { width: 1280, height: 720 },
+      timeout: 120000,
+      defaultViewport: { width: 1280, height: 900 },
     };
 
     if (process.platform === 'linux') {
@@ -39,19 +39,20 @@ export async function generatePlanPDF(htmlContent: string): Promise<Buffer> {
 
     browser = await puppeteer.launch(launchArgs);
     const page = await browser.newPage();
-    page.setDefaultTimeout(60000);
-    page.setDefaultNavigationTimeout(60000);
+    page.setDefaultTimeout(120000);
+    page.setDefaultNavigationTimeout(120000);
 
     await page.setContent(htmlContent, {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000,
+      waitUntil: ['domcontentloaded', 'networkidle0'],
+      timeout: 120000,
     });
+    await page.emulateMediaType('print');
 
     const pdf = await page.pdf({
       format: 'A4',
       margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
       printBackground: true,
-      timeout: 60000,
+      preferCSSPageSize: true,
     });
 
     return pdf;
@@ -97,10 +98,21 @@ export function createPlanHTML(data: PlanPDFData): string {
       line-height: 1.5;
       font-size: 14px;
       overflow-wrap: anywhere;
+      word-break: break-word;
+      hyphens: auto;
+      text-rendering: optimizeLegibility;
+    }
+    html, body {
+      width: 100%;
+    }
+    p, li, div, span, h1, h2, h3 {
+      max-width: 100%;
+      white-space: normal;
     }
     .header {
       text-align: center;
       margin-bottom: 24px;
+      page-break-inside: avoid;
     }
     .header h1 {
       font-size: 26px;
@@ -136,6 +148,7 @@ export function createPlanHTML(data: PlanPDFData): string {
     }
     .section {
       margin-bottom: 22px;
+      page-break-inside: avoid;
     }
     .section h2 {
       font-size: 18px;
@@ -150,6 +163,7 @@ export function createPlanHTML(data: PlanPDFData): string {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 14px;
+      align-items: start;
     }
     .goal-card {
       background: #f1f5f9;
@@ -221,6 +235,38 @@ export function createPlanHTML(data: PlanPDFData): string {
       color: #555;
       border-top: 1px dashed #d6d6d6;
       padding-top: 12px;
+    }
+    ul, ol {
+      margin: 0;
+      padding-left: 18px;
+    }
+    li {
+      page-break-inside: avoid;
+    }
+    @media print {
+      body {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .header h1 {
+        font-size: 23px;
+      }
+      .section h2 {
+        font-size: 16px;
+      }
+      .goal-card h3,
+      .week h3 {
+        font-size: 14px;
+      }
+      .goal-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .profile,
+      .goal-card,
+      .list-box,
+      .week {
+        break-inside: avoid;
+      }
     }
   </style>
 </head>

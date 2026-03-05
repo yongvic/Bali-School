@@ -1,18 +1,31 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { redirect } from 'next/navigation';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Plane, Zap, Users, Award } from 'lucide-react';
 
 export default function LandingPage() {
+  const router = useRouter();
   const sessionState = useSession();
   const session = sessionState?.data;
+  const status = sessionState?.status ?? 'loading';
 
-  if (session?.user) {
-    redirect('/dashboard');
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/dashboard');
+    }
+  }, [status, router]);
+
+  if (status === 'loading' || status === 'authenticated' || session?.user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Chargement...</p>
+      </div>
+    );
   }
 
   return (

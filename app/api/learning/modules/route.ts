@@ -49,8 +49,8 @@ export async function GET() {
         exercise.videoSubmissions.some((video) => ['REJECTED', 'REVISION_NEEDED'].includes(video.status))
       );
       const oralExercises = module.exercises.filter((exercise) => exercise.exerciseType === 'SPEAKING');
-      const hasApprovedOral = oralExercises.every((exercise) =>
-        exercise.videoSubmissions.some((video) => video.status === 'APPROVED')
+      const hasValidatedOral = oralExercises.every((exercise) =>
+        exercise.completed || exercise.videoSubmissions.some((video) => video.status === 'APPROVED')
       );
       const allExercisesCompleted = module.exercises.length > 0 && module.exercises.every((exercise) => exercise.completed);
       const reading = averageSkill(module.exercises, 'READING');
@@ -61,7 +61,7 @@ export async function GET() {
 
       const moduleValidated =
         allExercisesCompleted &&
-        hasApprovedOral &&
+        hasValidatedOral &&
         !hasRefusedVideo &&
         globalScore >= 70 &&
         speaking >= 60;
@@ -70,7 +70,7 @@ export async function GET() {
       const blockedReason = !withinLearnerRange
         ? `Ce module est au niveau ${cefrLevel}, au-dessus du niveau configuré.`
         : !previousModuleValidated
-          ? 'Validez complètement le module précédent (exercices + vidéo orale approuvée).'
+          ? 'Validez complètement le module précédent (exercices + production orale validée).'
           : null;
 
       previousModuleValidated = previousModuleValidated && moduleValidated;

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
+import { put } from '@vercel/blob';
 
 const ALLOWED_TYPES = new Map<string, string>([
   ['image/jpeg', 'jpg'],
@@ -39,22 +40,36 @@ export async function POST(req: Request) {
       select: { image: true },
     });
 
-    const avatarsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-    await mkdir(avatarsDir, { recursive: true });
-
     const filename = `${session.user.id}-${Date.now()}.${extension}`;
-    const absolutePath = path.join(avatarsDir, filename);
-    const publicPath = `/uploads/avatars/${filename}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     const detectedType = detectImageType(buffer);
     if (!detectedType || detectedType !== file.type) {
       return NextResponse.json({ error: 'Le contenu du fichier ne correspond pas au format déclaré.' }, { status: 400 });
     }
-    await writeFile(absolutePath, buffer);
+
+    let imageUrl = '';
+    try {
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        throw new Error('blob_token_missing');
+      }
+      const blob = await put(`avatars/${filename}`, buffer, {
+        access: 'public',
+        contentType: file.type,
+      });
+      imageUrl = blob.url;
+    } catch (uploadError) {
+      // Local/dev fallback when blob is unavailable.
+      const avatarsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+      await mkdir(avatarsDir, { recursive: true });
+      const absolutePath = path.join(avatarsDir, filename);
+      await writeFile(absolutePath, buffer);
+      imageUrl = `/uploads/avatars/${filename}`;
+      console.warn('Blob avatar upload unavailable, fallback local storage used:', uploadError);
+    }
 
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { image: publicPath },
+      data: { image: imageUrl },
     });
 
     if (oldUser?.image && oldUser.image.startsWith('/uploads/avatars/')) {
@@ -62,7 +77,7 @@ export async function POST(req: Request) {
       unlink(oldPath).catch(() => undefined);
     }
 
-    return NextResponse.json({ image: publicPath });
+    return NextResponse.json({ image: imageUrl });
   } catch (error) {
     console.error('Avatar upload error:', error);
     return NextResponse.json({ error: 'Impossible d\'uploader l\'avatar' }, { status: 500 });

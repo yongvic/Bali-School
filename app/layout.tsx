@@ -15,22 +15,11 @@ export const metadata: Metadata = {
       {
         url: '/flaticon.svg',
         type: 'image/svg+xml',
-        sizes: '16x16 32x32',
-      },
-      {
-        url: '/icon-light-32x32.png',
-        type: 'image/png',
-        sizes: '32x32',
+        sizes: '16x16 32x32 64x64',
       },
     ],
-    shortcut: [
-      {
-        url: '/icon-light-32x32.png',
-        type: 'image/png',
-        sizes: '16x16',
-      },
-    ],
-    apple: '/apple-icon.png',
+    shortcut: '/flaticon.svg',
+    apple: '/flaticon.svg',
   },
 }
 

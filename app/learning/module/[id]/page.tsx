@@ -64,10 +64,10 @@ const phaseLabels = [
 ];
 
 const skillPills = [
-  { label: 'Listening', icon: Headphones },
-  { label: 'Speaking', icon: Mic },
-  { label: 'Grammar', icon: GraduationCap },
-  { label: 'Vocabulary', icon: BookOpen },
+  { label: 'Compréhension orale', icon: Headphones },
+  { label: 'Expression orale', icon: Mic },
+  { label: 'Grammaire', icon: GraduationCap },
+  { label: 'Vocabulaire', icon: BookOpen },
 ];
 
 const practiceSteps: PracticeStep[] = [
@@ -163,6 +163,7 @@ export default function ModulePage() {
   const [activePhase, setActivePhase] = useState(0);
   const [selectedWordIndex, setSelectedWordIndex] = useState(0);
   const [practiceIndex, setPracticeIndex] = useState(0);
+  const storageKey = `module-ui-progress:${moduleId}`;
 
   if (!session?.user) {
     redirect('/auth/signin');
@@ -204,6 +205,24 @@ export default function ModulePage() {
     fetchModule();
   }, [moduleId]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        activePhase?: number;
+        selectedWordIndex?: number;
+        practiceIndex?: number;
+      };
+      if (typeof saved.activePhase === 'number') setActivePhase(Math.max(0, Math.min(5, saved.activePhase)));
+      if (typeof saved.selectedWordIndex === 'number') setSelectedWordIndex(Math.max(0, saved.selectedWordIndex));
+      if (typeof saved.practiceIndex === 'number') setPracticeIndex(Math.max(0, saved.practiceIndex));
+    } catch {
+      // Ignore corrupted local state.
+    }
+  }, [storageKey]);
+
   const speak = (text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text) {
       toast.error('Synthese vocale non disponible sur ce navigateur.');
@@ -241,10 +260,27 @@ export default function ModulePage() {
     });
   }, [module, structuredByExercise]);
 
+  useEffect(() => {
+    if (!practiceExercises.length) return;
+    setPracticeIndex((current) => Math.min(current, practiceExercises.length - 1));
+  }, [practiceExercises.length]);
+
   const oralExercise = useMemo(() => {
     if (!module) return null;
     return module.exercises.find((exercise) => exercise.phase === 'ORAL_PRODUCTION') || null;
   }, [module]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        activePhase,
+        selectedWordIndex,
+        practiceIndex,
+      })
+    );
+  }, [activePhase, selectedWordIndex, practiceIndex, storageKey]);
 
   const finalExercises = useMemo(() => {
     if (!module) return [];
@@ -282,10 +318,12 @@ export default function ModulePage() {
   const earnedPoints = module.exercises.filter((exercise) => exercise.completed).reduce((sum, exercise) => sum + exercise.pointsValue, 0);
   const objective = blueprint?.introduction.objective || 'A la fin de ce module, vous serez capable de formuler des demandes polies aux passagers.';
   const moduleTitle = module.title?.trim() || 'Cabin Communication Module';
-  const displayTitle = moduleTitle.includes(' - ') ? moduleTitle : `Passenger Service - ${moduleTitle}`;
+  const displayTitle = moduleTitle.includes(' - ') ? moduleTitle : `Service passager - ${moduleTitle}`;
   const selectedWord = blueprint?.vocabulary?.[selectedWordIndex] || blueprint?.vocabulary?.[0] || null;
   const guidedProgress = Math.round(((activePhase + 1) / phaseLabels.length) * 100);
   const currentPractice = practiceExercises[practiceIndex] || null;
+  const practiceCompletedCount = practiceExercises.filter((item) => item.exercise?.completed).length;
+  const practiceTotal = practiceExercises.length;
 
   const completedSkillSummary = module.exercises.reduce(
     (acc, exercise) => {
@@ -482,8 +520,36 @@ export default function ModulePage() {
             <CardHeader>
               <CardTitle>Phase 4 - Pratique guidee</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">Progression imposee du simple au complexe. L'oral n'apparait pas dans cette phase.</p>
+            <CardContent className="space-y-5">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-sm font-semibold">Comment fonctionne cette phase</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Suivez les étapes dans l&apos;ordre. Faites une seule étape à la fois puis cliquez sur &quot;Étape suivante&quot;.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Progression: {practiceCompletedCount}/{practiceTotal} étapes validées.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {practiceExercises.map((item, index) => (
+                  <button
+                    key={`${item.step.id}-${index}`}
+                    type="button"
+                    onClick={() => setPracticeIndex(index)}
+                    className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
+                      index === practiceIndex
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : item.exercise?.completed
+                          ? 'border-green-300 bg-green-50 text-green-700'
+                          : 'border-slate-200 bg-white text-muted-foreground'
+                    }`}
+                  >
+                    <p className="font-semibold">Étape {index + 1}</p>
+                    <p className="truncate">{item.step.title.replace(/^\d+\.\s*/, '')}</p>
+                  </button>
+                ))}
+              </div>
 
               {currentPractice && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
@@ -498,9 +564,14 @@ export default function ModulePage() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold">Activite reliee: {currentPractice.exercise.title}</p>
                         <p className="text-xs text-muted-foreground break-words">{currentPractice.exercise.description}</p>
+                        <p className="text-xs mt-1">
+                          Statut: {currentPractice.exercise.completed ? 'Terminée' : 'À faire'}
+                        </p>
                       </div>
                       <Button asChild size="sm" className="w-full sm:w-auto">
-                        <Link href={`/learning/exercise/${currentPractice.exercise.id}`}>Commencer</Link>
+                        <Link href={`/learning/exercise/${currentPractice.exercise.id}`}>
+                          {currentPractice.exercise.completed ? 'Revoir' : 'Commencer'}
+                        </Link>
                       </Button>
                     </div>
                   ) : (
@@ -518,14 +589,14 @@ export default function ModulePage() {
                   disabled={practiceIndex === 0}
                   className="w-full sm:w-auto"
                 >
-                  Etape precedente
+                  Étape précédente
                 </Button>
                 <Button
                   onClick={() => setPracticeIndex((prev) => Math.min(practiceExercises.length - 1, prev + 1))}
                   disabled={practiceIndex >= practiceExercises.length - 1}
                   className="w-full sm:w-auto"
                 >
-                  Etape suivante
+                  Étape suivante
                 </Button>
               </div>
             </CardContent>
@@ -535,14 +606,14 @@ export default function ModulePage() {
         {activePhase === 4 && (
           <Card className="rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
             <CardHeader>
-              <CardTitle>Phase 5 - Speaking Practice - Cabin Simulation</CardTitle>
+              <CardTitle>Phase 5 - Production orale finale</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">Contexte: A passenger refuses to sit down during takeoff.</p>
-              <p className="text-sm"><strong>Instruction:</strong> Record a polite request using "could" or "would".</p>
+              <p className="text-sm text-muted-foreground">Vous allez répondre à l&apos;oral avec une note vocale (micro uniquement).</p>
+              <p className="text-sm"><strong>Instruction:</strong> Formulez une réponse polie et professionnelle en anglais.</p>
 
               <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4 space-y-2 text-sm">
-                <p>1. Bouton activer micro.</p>
+                <p>1. Cliquez sur &quot;Ouvrir la note vocale&quot;.</p>
                 <p>2. Indicateur d'enregistrement visible pendant la prise.</p>
                 <p>3. Transcription affichee apres arret.</p>
                 <p>4. Comparaison avec la structure attendue.</p>
@@ -556,7 +627,7 @@ export default function ModulePage() {
                     <p className="text-xs text-muted-foreground break-words">{oralExercise.description}</p>
                   </div>
                   <Button asChild className="w-full sm:w-auto">
-                    <Link href={`/learning/exercise/${oralExercise.id}`}>Activer le micro</Link>
+                    <Link href={`/learning/exercise/${oralExercise.id}`}>Ouvrir la note vocale</Link>
                   </Button>
                 </div>
               ) : (

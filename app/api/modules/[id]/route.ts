@@ -90,20 +90,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const blocked = previousModules.some((m) => {
       const allCompleted = m.exercises.length > 0 && m.exercises.every((e) => e.completed);
-      const oralApproved = m.exercises
+      const oralValidated = m.exercises
         .filter((e) => e.exerciseType === 'SPEAKING')
-        .every((e) => e.videoSubmissions.some((v) => v.status === 'APPROVED'));
+        .every((e) => e.completed || e.videoSubmissions.some((v) => v.status === 'APPROVED'));
       const hasRejected = m.exercises.some((e) =>
         e.videoSubmissions.some((v) => ['REJECTED', 'REVISION_NEEDED'].includes(v.status))
       );
-      return !allCompleted || !oralApproved || hasRejected;
+      return !allCompleted || !oralValidated || hasRejected;
     });
 
     if (blocked) {
       return Response.json(
         {
           message:
-            'Module bloqué: validez complètement le module précédent (exercices terminés + vidéo orale approuvée).',
+            'Module bloqué: validez complètement le module précédent (exercices terminés + production orale validée).',
         },
         { status: 423 }
       );

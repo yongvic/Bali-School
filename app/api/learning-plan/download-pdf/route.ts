@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generatePlanPDF, generateFallbackPlanPDF, createPlanHTML, type PlanPDFData } from '@/lib/pdf-generator';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 export async function GET(_req: Request) {
   try {

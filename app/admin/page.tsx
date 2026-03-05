@@ -78,6 +78,11 @@ export default function AdminPage() {
     }
   }, [session?.user?.role]);
 
+  const pendingVideos = useMemo(
+    () => videos.filter((video) => video.status === 'pending'),
+    [videos]
+  );
+
   if (status === 'unauthenticated') {
     redirect('/auth/signin');
   }
@@ -89,13 +94,6 @@ export default function AdminPage() {
   if (session.user.role !== 'ADMIN') {
     redirect('/dashboard');
   }
-
-  const pendingVideos = useMemo(
-    () => videos.filter((video) => video.status === 'pending'),
-    [videos]
-  );
-
-  const topStudents = useMemo(() => [...students].sort((a, b) => b.exercisesCompleted - a.exercisesCompleted).slice(0, 6), [students]);
 
   const statsTiles = [
     {
@@ -146,10 +144,10 @@ export default function AdminPage() {
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2">
-          <p className="text-xs uppercase tracking-[0.5em] text-slate-400">Synthèse</p>
+          <p className="text-xs uppercase tracking-[0.5em] text-muted-foreground">Synthèse</p>
           <h2 className="text-3xl font-semibold">Tout le pilotage au même endroit</h2>
         </div>
-        <p className="text-sm text-slate-300 max-w-3xl">
+        <p className="text-sm text-muted-foreground max-w-3xl">
           Suivez les soumissions, donnez vos verdicts et accompagnez les élèves. La navigation à gauche vous permet
           d&apos;atteindre les sections clés en un clic.
         </p>
@@ -176,14 +174,14 @@ export default function AdminPage() {
           return (
             <Card key={tile.label} className="bg-slate-900 border-slate-800 shadow-sm">
               <CardHeader className="flex items-center justify-between gap-4 pb-2">
-                <div className="flex items-center gap-2 text-sm text-slate-400">
-                  <TileIcon className="h-4 w-4 text-cyan-400" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <TileIcon className="h-4 w-4 text-primary" />
                   <span>{tile.label}</span>
                 </div>
-                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">{tile.badge}</span>
+                <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{tile.badge}</span>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-semibold text-white">{tile.value}</p>
+                <p className="text-3xl font-semibold text-foreground">{tile.value}</p>
               </CardContent>
             </Card>
           );
@@ -193,7 +191,7 @@ export default function AdminPage() {
       <section id="pending" className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Vidéos</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Vidéos</p>
             <h3 className="text-2xl font-semibold">Soumissions en attente ({pendingVideos.length})</h3>
           </div>
           <Link href="#pending">
@@ -207,7 +205,7 @@ export default function AdminPage() {
         {pendingVideos.length === 0 ? (
           <Card className="bg-slate-900 border-slate-800">
             <CardContent className="py-10 text-center">
-              <p className="text-sm text-slate-400">Aucune vidéo à revoir pour l&apos;instant.</p>
+              <p className="text-sm text-muted-foreground">Aucune vidéo à revoir pour l&apos;instant.</p>
             </CardContent>
           </Card>
         ) : (
@@ -215,14 +213,14 @@ export default function AdminPage() {
             {pendingVideos.slice(0, 6).map((video) => (
               <Card key={video.id} className="border-slate-800 shadow-sm">
                 <CardHeader>
-                  <div className="text-sm text-slate-400">Soumise par {video.userName}</div>
+                  <div className="text-sm text-muted-foreground">Soumise par {video.userName}</div>
                   <CardTitle className="text-lg">{video.exerciseTitle}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Soumise le {new Date(video.submittedAt).toLocaleString()}
                   </p>
-                  <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                     <span className="rounded-full border border-slate-700 px-2 py-1">Status: En attente</span>
                     <span className="rounded-full border border-slate-700 px-2 py-1">Vidéo</span>
                   </div>
@@ -241,7 +239,7 @@ export default function AdminPage() {
       <section id="students" className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Élèves</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Élèves</p>
             <h3 className="text-2xl font-semibold">Suivi des apprenants</h3>
           </div>
         </div>
@@ -261,8 +259,8 @@ export default function AdminPage() {
               <tbody>
                 {students.map((student) => (
                   <tr key={student.id} className="border-b border-slate-800 hover:bg-slate-900">
-                    <td className="py-3 px-4 font-medium text-white">{student.name}</td>
-                    <td className="py-3 px-4 text-slate-400">{student.email}</td>
+                    <td className="py-3 px-4 font-medium text-foreground">{student.name}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{student.email}</td>
                     <td className="py-3 px-4">{student.exercisesCompleted}</td>
                     <td className="py-3 px-4">{student.videosSubmitted}</td>
                     <td className="py-3 px-4">
@@ -283,7 +281,7 @@ export default function AdminPage() {
       <section id="content" className="space-y-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Contenu</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Contenu</p>
             <h3 className="text-2xl font-semibold">Actions de gestion</h3>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -299,7 +297,7 @@ export default function AdminPage() {
           </div>
         </div>
         <Card className="border-dashed border-slate-800 bg-slate-900/60">
-          <CardContent className="text-sm text-slate-400">
+          <CardContent className="text-sm text-muted-foreground">
             <p>
               Toutes ces actions ouvriront une interface dédiée une fois que les API de contenu seront disponibles.
               Pour l&apos;instant, vous pouvez utiliser les données ci-dessus pour piloter les révisions et les points.
