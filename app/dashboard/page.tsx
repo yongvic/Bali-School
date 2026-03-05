@@ -48,7 +48,8 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     const confirmed = window.confirm('Merci pour votre effort aujourd’hui. Voulez-vous vraiment vous déconnecter ?');
     if (!confirmed) return;
-    await signOut({ redirect: true, callbackUrl: '/' });
+    const callbackUrl = new URL('/', window.location.origin).toString();
+    await signOut({ redirect: true, callbackUrl });
   };
 
   const cards = [
