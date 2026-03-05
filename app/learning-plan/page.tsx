@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { redirect, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,7 @@ export default function LearningPlanPage() {
   const router = useRouter();
   const [plan, setPlan] = useState<LearningPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // isDownloading kept for API compatibility but unused now
-  const [isDownloading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [justGenerated, setJustGenerated] = useState(false);
   const [levelToApply, setLevelToApply] = useState('B1');
   const [focusInput, setFocusInput] = useState('');
@@ -47,6 +46,7 @@ export default function LearningPlanPage() {
   const [weeklyObjectivesInput, setWeeklyObjectivesInput] = useState('');
   const [skillFocusesInput, setSkillFocusesInput] = useState('');
   const [exerciseSuggestionsInput, setExerciseSuggestionsInput] = useState('');
+  const pdfContainerRef = useRef<HTMLDivElement | null>(null);
 
   if (status === 'unauthenticated') {
     redirect('/auth/signin');
@@ -101,9 +101,60 @@ export default function LearningPlanPage() {
     fetchPlan();
   }, [session?.user?.id, status, router]);
 
-  const handleDownloadPDF = () => {
-    // Open the print page in a new tab — the browser handles PDF generation natively
-    window.open('/learning-plan/print', '_blank');
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      if (!plan || !pdfContainerRef.current) {
+        throw new Error('Le plan est indisponible pour le téléchargement.');
+      }
+
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
+      const canvas = await html2canvas(pdfContainerRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          clonedDoc.documentElement.style.backgroundColor = '#ffffff';
+          clonedDoc.body.style.backgroundColor = '#ffffff';
+          clonedDoc.body.style.color = '#111827';
+        },
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const contentWidth = pageWidth - margin * 2;
+      const contentHeight = (canvas.height * contentWidth) / canvas.width;
+
+      let heightLeft = contentHeight;
+      let position = margin;
+
+      pdf.addImage(imgData, 'PNG', margin, position, contentWidth, contentHeight);
+      heightLeft -= pageHeight - margin * 2;
+
+      while (heightLeft > 0) {
+        position = -(contentHeight - heightLeft) + margin;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, position, contentWidth, contentHeight);
+        heightLeft -= pageHeight - margin * 2;
+      }
+
+      pdf.save('plan-apprentissage-ravis.pdf');
+      toast.success('Plan PDF téléchargé avec succès.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Impossible de télécharger le PDF';
+      toast.error(message);
+      console.error(error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleUpdatePlan = async () => {
@@ -419,6 +470,69 @@ export default function LearningPlanPage() {
           </CardContent>
         </Card>
       </div>
+
+      {plan && (
+        <div
+          ref={pdfContainerRef}
+          style={{
+            position: 'fixed',
+            left: '-99999px',
+            top: 0,
+            width: '900px',
+            backgroundColor: '#ffffff',
+            color: '#111827',
+            padding: '32px',
+            fontFamily: 'Segoe UI, Arial, sans-serif',
+          }}
+          aria-hidden
+        >
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '30px', fontWeight: 700, color: '#1d4ed8', margin: 0 }}>Plan d&apos;apprentissage - 12 semaines</h1>
+            <p style={{ fontSize: '12px', color: '#475569', marginTop: '8px' }}>Généré le {new Date().toLocaleDateString('fr-FR')}</p>
+          </div>
+
+          <section style={{ marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1d4ed8', marginBottom: '8px' }}>Objectifs 30 / 60 / 90 jours</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+              {[{ label: '30 jours', goals: plan.goals30 || [] }, { label: '60 jours', goals: plan.goals60 || [] }, { label: '90 jours', goals: plan.goals90 || [] }].map((group) => (
+                <div key={group.label} style={{ borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', padding: '12px' }}>
+                  <h3 style={{ fontWeight: 600, marginBottom: '8px' }}>{group.label}</h3>
+                  <ul style={{ paddingLeft: '16px', fontSize: '12px', margin: 0 }}>
+                    {group.goals.map((goal, index) => <li key={`${group.label}-${index}`}>{goal}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={{ marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1d4ed8', marginBottom: '8px' }}>Compétences à maîtriser</h2>
+            <ul style={{ paddingLeft: '18px', fontSize: '14px', margin: 0 }}>
+              {(plan.skillFocuses || []).map((skill) => <li key={skill}>{skill}</li>)}
+            </ul>
+          </section>
+
+          <section style={{ marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1d4ed8', marginBottom: '8px' }}>Exercices suggérés</h2>
+            <ul style={{ paddingLeft: '18px', fontSize: '14px', margin: 0 }}>
+              {(plan.exerciseSuggestions || []).map((exercise) => <li key={exercise}>{exercise}</li>)}
+            </ul>
+          </section>
+
+          <section>
+            <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1d4ed8', marginBottom: '8px' }}>Modules par semaine</h2>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {plan.modules.map((module) => (
+                <div key={module.week} style={{ borderRadius: '8px', border: '1px solid #e2e8f0', padding: '12px' }}>
+                  <p style={{ fontWeight: 600, margin: 0 }}>Semaine {module.week} - {module.title}</p>
+                  <p style={{ fontSize: '12px', color: '#334155', marginTop: '4px' }}>{module.description}</p>
+                  <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Objectif: {module.targetPoints} points Kiki</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

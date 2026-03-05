@@ -23,8 +23,7 @@ export function Navigation() {
   if (
     pathname === '/' ||
     pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/admin') ||
-    pathname === '/learning-plan/print'
+    pathname.startsWith('/admin')
   ) {
     return null;
   }
