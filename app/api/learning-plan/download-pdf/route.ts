@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { generatePlanPDF, generateFallbackPlanPDF, createPlanHTML, type PlanPDFData } from '@/lib/pdf-generator';
+import { generatePlanPDF, createPlanHTML, type PlanPDFData } from '@/lib/pdf-generator';
 
 export const runtime = 'nodejs';
 export const maxDuration = 180;
@@ -8,7 +8,7 @@ export const maxDuration = 180;
 export async function GET(_req: Request) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return Response.json(
         { message: 'Non autorisé' },
@@ -80,7 +80,7 @@ export async function GET(_req: Request) {
 
     try {
       const pdf = await generatePlanPDF(htmlContent);
-      return new Response(pdf, {
+      return new Response(new Uint8Array(pdf), {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': 'attachment; filename="plan-apprentissage-ravis.pdf"',
@@ -88,15 +88,11 @@ export async function GET(_req: Request) {
         },
       });
     } catch (pdfError) {
-      console.error('PDF generation failed, using fallback:', pdfError);
-      const fallbackPdf = generateFallbackPlanPDF(planData);
-      return new Response(fallbackPdf, {
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="plan-apprentissage-ravis.pdf"',
-          'Cache-Control': 'no-store',
-        },
-      });
+      console.error('PDF generation failed:', pdfError);
+      return Response.json(
+        { message: 'Échec de la génération du PDF. Veuillez réessayer plus tard.' },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('PDF generation error:', error);
