@@ -119,9 +119,13 @@ export default function LearningPlanPage() {
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
+          clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => node.remove());
           clonedDoc.documentElement.style.backgroundColor = '#ffffff';
+          clonedDoc.documentElement.style.colorScheme = 'light';
           clonedDoc.body.style.backgroundColor = '#ffffff';
           clonedDoc.body.style.color = '#111827';
+          clonedDoc.body.style.margin = '0';
+          clonedDoc.body.className = '';
         },
       });
 
